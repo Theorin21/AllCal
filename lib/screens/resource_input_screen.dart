@@ -17,12 +17,24 @@ class ResourceInputState {
   // 완료 버튼 활성화 여부를 위한 getter
   bool get isValid => selectedResourceId != null && amountController.text.isNotEmpty;
 
-  ResourceInputState();
+  // [수정] 생성자가 3개의 값을 받을 수 있도록 변경합니다.
+  ResourceInputState({this.selectedResourceId, String amount = '', this.isPositive = true}) {
+    // 전달받은 amount 값으로 텍스트 컨트롤러의 초기값을 설정합니다.
+    amountController.text = amount;
+  }
 }
 
 class ResourceInputScreen extends StatefulWidget {
   final String dataId;
-  const ResourceInputScreen({super.key, required this.dataId});
+  // [추가] 수정 모드를 위한 initialChanges 매개변수 선언
+  final List<ResourceChange>? initialChanges;
+
+  // [수정] 생성자에 this.initialChanges를 추가합니다.
+  const ResourceInputScreen({
+    super.key,
+    required this.dataId,
+    this.initialChanges,
+  });
 
   @override
   State<ResourceInputScreen> createState() => _ResourceInputScreenState();
@@ -30,13 +42,27 @@ class ResourceInputScreen extends StatefulWidget {
 
 class _ResourceInputScreenState extends State<ResourceInputScreen> {
   List<ResourceInputState> _inputStates = [];
-  bool _canSave = false; // 완료 버튼 활성화 상태
+  bool _canSave = false;
 
   @override
   void initState() {
     super.initState();
-    // 초기 입력 줄 추가 및 리스너 설정
-    _addInputRow();
+    // [수정] 초기 데이터가 있으면 채우고, 없으면 빈 칸으로 시작합니다.
+    if (widget.initialChanges != null && widget.initialChanges!.isNotEmpty) {
+      for (var change in widget.initialChanges!) {
+        // 기존 데이터를 사용하여 입력 줄을 추가합니다.
+        _addInputRow(
+          resourceId: change.resourceId,
+          amount: change.amount.abs().toString(),
+          isPositive: change.amount >= 0,
+        );
+      }
+    } else {
+      // '추가' 모드일 경우, 빈 입력 줄 하나만 추가합니다.
+      _addInputRow();
+    }
+    // initState가 끝난 직후에 첫 유효성 검사를 수행합니다.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _validateInputs());
   }
 
   @override
@@ -57,13 +83,17 @@ class _ResourceInputScreenState extends State<ResourceInputScreen> {
     }
   }
 
-  void _addInputRow() {
+  // [수정] _addInputRow 함수가 초기값을 받을 수 있도록 변경합니다.
+  void _addInputRow({String? resourceId, String amount = '', bool isPositive = true}) {
+    final newState = ResourceInputState(
+      selectedResourceId: resourceId,
+      amount: amount,
+      isPositive: isPositive,
+    );
+    newState.amountController.addListener(_validateInputs);
     setState(() {
-      final newState = ResourceInputState();
-      // 새로운 입력 줄의 값이 변경될 때마다 유효성 검사 실행
-      newState.amountController.addListener(_validateInputs);
       _inputStates.add(newState);
-      _validateInputs(); // 추가 후 즉시 유효성 검사
+      _validateInputs();
     });
   }
   

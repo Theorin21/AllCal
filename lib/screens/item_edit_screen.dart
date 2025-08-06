@@ -25,10 +25,13 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
   late Category? _selectedCategory;
   late DateTime _startDate;
   late DateTime _endDate;
+  late ItemType _currentItemType; // [추가] 변경 가능한 itemType 상태 변수
 
   @override
   void initState() {
     super.initState();
+    _currentItemType = widget.itemType; // [추가] 상태 변수 초기화
+
     final categoryProvider = context.read<CategoryProvider>();
 
     _titleController = TextEditingController(text: widget.data?.title ?? '');
@@ -55,7 +58,7 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
   }
 
   String _getTitle() {
-    switch (widget.itemType) {
+    switch (_currentItemType) { // [수정]
       case ItemType.schedule: return '일정';
       case ItemType.deadline: return '기한';
       case ItemType.task: return '할일';
@@ -70,21 +73,24 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
     
     final dataProvider = context.read<DataProvider>();
     final newItem = DailyData(
-      id: widget.data?.id ?? const Uuid().v4(),
-      type: widget.itemType,
+      id: widget.data?.id ?? const Uuid().v4(), // [핵심] 수정 모드일 경우 기존 id를 그대로 사용
+      type: _currentItemType, // [수정]
       title: _titleController.text,
       categoryId: _selectedCategory!.id,
-      isAllDay: widget.itemType == ItemType.task, // 할일 타입만 isAllDay
+      isAllDay: widget.data?.isAllDay ?? false, // isAllDay는 수정 화면에서 바꿀 수 없음 (임시)
       startTime: _startDate,
-      endTime: (widget.itemType == ItemType.schedule || widget.itemType == ItemType.task) ? _endDate : null,
+      endTime: (widget.itemType == ItemType.schedule || widget.itemType == ItemType.deadline) ? _endDate : null,
       memo: (widget.itemType == ItemType.task || widget.itemType == ItemType.record) ? _memoController.text : null,
-      // [수정] '기록' 타입일 경우, 생성 시점부터 'completed' 상태로 설정
-      completionState: (widget.itemType == ItemType.record)
-          ? CompletionState.completed
-          : CompletionState.notCompleted,
+      completionState: widget.data?.completionState ?? CompletionState.notCompleted, // 기존 상태 유지
+      resourceChanges: widget.data?.resourceChanges ?? [], // 기존 자원 기록 유지
     );
     
-    dataProvider.addData(newItem);
+    // [수정] '수정 모드'인지 '만들기 모드'인지 확인하여 다른 함수를 호출합니다.
+    if (widget.data != null) { // data가 있으면 수정 모드
+      dataProvider.updateData(newItem);
+    } else { // data가 없으면 만들기 모드
+      dataProvider.addData(newItem);
+    }
     
     Navigator.of(context).pop();
   }
@@ -113,12 +119,50 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
     );
   }
 
+  // [추가] 타입 변경 시 데이터 변환 로직을 처리하는 함수
+  void _onTypeChanged(ItemType newType) {
+    setState(() {
+      // 예시: 일정 -> 기한으로 변경 시, 시작 시간을 기한 시간으로 복사
+      if (widget.itemType == ItemType.schedule && newType == ItemType.deadline) {
+        _endDate = _startDate;
+      }
+      // TODO: 다른 모든 타입 변경 경우에 대한 데이터 변환 규칙 추가
+      
+      // [수정] widget.itemType = newType; -> _currentItemType = newType;
+      _currentItemType = newType;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true, // 이제 이 속성이 정상적으로 작동합니다.
         leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
-        title: Text(_getTitle()),
+        // [수정] ExpansionTile -> 직접 만든 커스텀 위젯으로 교체
+        // [수정] title을 PopupMenuButton으로 교체
+        title: PopupMenuButton<ItemType>(
+          // [2. 위치 수정] offset 속성을 추가하여 메뉴가 아래로 나타나도록 합니다.
+          offset: const Offset(-39, 40), // y축(세로)으로 40만큼 아래에 표시
+          onSelected: (ItemType newType) {
+            _onTypeChanged(newType);
+          },
+          itemBuilder: (BuildContext context) {
+            return ItemType.values
+                .where((type) => type != _currentItemType)
+                .map((ItemType type) {
+              return PopupMenuItem<ItemType>(
+                value: type,
+                // [1. 한국어 수정] _translateItemType 함수를 사용하여 한글로 표시
+                child: Center(child: Text(_translateItemType(type))),
+              );
+            }).toList();
+          },
+          child: Text(
+            _getTitle(),
+            style: const TextStyle(fontSize: 18, color: Colors.black),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -173,12 +217,12 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
           ),
           const Divider(),
           
-          if (widget.itemType == ItemType.schedule) _buildScheduleFields(),
-          if (widget.itemType == ItemType.deadline) _buildDeadlineFields(),
-          if (widget.itemType == ItemType.task) _buildTaskFields(),
-          if (widget.itemType == ItemType.record) _buildRecordFields(),
+          if (_currentItemType == ItemType.schedule) _buildScheduleFields(), // [수정]
+          if (_currentItemType == ItemType.deadline) _buildDeadlineFields(), // [수정]
+          if (_currentItemType == ItemType.task) _buildTaskFields(),       // [수정]
+          if (_currentItemType == ItemType.record) _buildRecordFields(),     // [수정]
           
-          if (widget.itemType != ItemType.record) ...[
+          if (_currentItemType != ItemType.record) ...[ // [수정]
             const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -195,6 +239,20 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
         ],
       ),
     );
+  }
+
+  // [1. 한국어 수정] ItemType을 한국어로 변환하는 헬퍼 함수 추가
+  String _translateItemType(ItemType type) {
+    switch (type) {
+      case ItemType.schedule:
+        return '일정';
+      case ItemType.deadline:
+        return '기한';
+      case ItemType.task:
+        return '할일';
+      case ItemType.record:
+        return '기록';
+    }
   }
 
   Widget _buildScheduleFields() {

@@ -19,19 +19,43 @@ class DataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void cycleCompletionState(String id) {
+  // [수정] notCompleted -> completed 상태로만 변경하는 함수
+  void setCompleted(String id) {
     try {
       final data = _allData.firstWhere((item) => item.id == id);
       if (data.completionState == CompletionState.notCompleted) {
         data.completionState = CompletionState.completed;
-      } else {
-        // 이미 완료된 항목을 다시 누르면 미완료로 (토글)
+        notifyListeners();
+      }
+    } catch (e) { print('Could not find data with id: $id'); }
+  }
+
+  // [추가] 상태를 되돌리는 함수 (꾹 누르기 기능)
+  void revertCompletionState(String id) {
+    try {
+      final data = _allData.firstWhere((item) => item.id == id);
+      if (data.completionState == CompletionState.detailed) {
+        data.completionState = CompletionState.completed;
+        data.resourceChanges = []; // [핵심] 자원 기록 삭제
+      } else if (data.completionState == CompletionState.completed) {
         data.completionState = CompletionState.notCompleted;
-        data.resourceChanges = []; // 기록된 자원 변화량도 초기화
       }
       notifyListeners();
+    } catch (e) { print('Could not find data with id: $id'); }
+  }
+
+  // [추가] 기존 데이터를 수정(덮어쓰기)하는 함수
+  void updateData(DailyData updatedData) {
+    try {
+      // 리스트에서 수정할 데이터의 인덱스를 찾습니다.
+      final index = _allData.indexWhere((item) => item.id == updatedData.id);
+      if (index != -1) {
+        // 해당 인덱스의 기존 데이터를 새로운 데이터로 교체합니다.
+        _allData[index] = updatedData;
+        notifyListeners(); // 변경사항을 알립니다.
+      }
     } catch (e) {
-      print('Could not find data with id: $id');
+      print('Could not find data with id: ${updatedData.id}');
     }
   }
 

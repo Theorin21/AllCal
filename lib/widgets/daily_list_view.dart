@@ -44,77 +44,145 @@ class DailyListView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          if (data.type == ItemType.schedule)
-            Container(width: 4, height: 30, color: categoryColor),
-          if (data.type == ItemType.deadline)
-            CustomPaint(
-              size: const Size(4, 30),
-              painter: DeadlinePainter(color: categoryColor),
-            ),
-          if (data.type == ItemType.task || data.type == ItemType.record)
-            Container(width: 8, height: 8, decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)),
-          
-          const SizedBox(width: 8),
-
+          // [수정] Expanded 부분을 GestureDetector로 감싸서 터치 영역을 확장합니다.
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data.title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
-                    color: isFinished ? Colors.grey : Colors.black,
-                  ),
-                ),
-                if (timeText.isNotEmpty)
-                  Text(
-                    timeText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => ItemEditScreen(itemType: data.type, data: data),
+                  fullscreenDialog: true,
+                ));
+              },
+              behavior: HitTestBehavior.opaque,
+              // [수정] 색상 아이콘과 텍스트를 새로운 Row로 묶습니다.
+              child: Row(
+                children: [
+                  if (data.type == ItemType.schedule)
+                    Container(width: 4, height: 30, color: categoryColor),
+                  if (data.type == ItemType.deadline)
+                    CustomPaint(
+                      size: const Size(4, 30),
+                      painter: DeadlinePainter(color: categoryColor),
+                    ),
+                  if (data.type == ItemType.task || data.type == ItemType.record)
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)),
+                  
+                  const SizedBox(width: 8),
+
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        // 탭하면 '수정' 모드로 ItemEditScreen을 엽니다.
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => ItemEditScreen(
+                            itemType: data.type,
+                            data: data, // [핵심] 탭한 항목의 데이터를 전달
+                          ),
+                          fullscreenDialog: true,
+                        ));
+                      },
+                      // 배경이 없는 위젯도 탭 영역으로 인식하도록 설정
+                      behavior: HitTestBehavior.opaque, 
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data.title,
+                            style: TextStyle(
+                              fontSize: 15,
+                              decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+                              color: isFinished ? Colors.grey : Colors.black,
+                            ),
+                          ),
+                          if (timeText.isNotEmpty)
+                            Text(
+                              timeText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(width: 8),
+                  
+                  const SizedBox(width: 8),
 
-          InkWell(
-            onTap: () {
-              if (data.completionState == CompletionState.completed) {
-                // [수정] showDialog를 사용하여 팝업창으로 띄웁니다.
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    // ResourceInputScreen을 AlertDialog로 감싸서 팝업 형태로 만듭니다.
-                    return AlertDialog(
-                      contentPadding: const EdgeInsets.all(0),
-                      // --- [추가] 디자인 속성들 ---
-                      backgroundColor: Colors.white, // 배경색
-                      elevation: 8.0, // 그림자 농도
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0), // 모서리를 12만큼 둥글게
-                      ),
-                      // [수정] SizedBox로 감싸서 가로 길이를 고정합니다.
-                      content: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.9, // 화면 너비의 90%
-                        child: ResourceInputScreen(dataId: data.id),
-                      ),
-                    );
-                  },
-                );
-              } else {
-                context.read<DataProvider>().cycleCompletionState(data.id); 
-              }
-            },
-            borderRadius: BorderRadius.circular(4),
-            child: Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: _buildCompletionIcon(context, data),
+                  // [수정] InkWell -> GestureDetector로 변경하여 onLongPress 추가
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque, // 투명한 영역도 터치되도록
+                    onTap: () {
+                      switch (data.completionState) {
+                        case CompletionState.notCompleted:
+                          // [수정] setCompleted 함수 호출
+                          context.read<DataProvider>().setCompleted(data.id);
+                          break;
+                        case CompletionState.completed:
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              // ResourceInputScreen을 AlertDialog로 감싸서 팝업 형태로 만듭니다.
+                              return AlertDialog(
+                                contentPadding: const EdgeInsets.all(0),
+                                // --- [추가] 디자인 속성들 ---
+                                backgroundColor: Colors.white, // 배경색
+                                elevation: 8.0, // 그림자 농도
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.0), // 모서리를 12만큼 둥글게
+                                ),
+                                // [수정] SizedBox로 감싸서 가로 길이를 고정합니다.
+                                content: SizedBox(
+                                  width: MediaQuery.of(context).size.width * 0.9, // 화면 너비의 90%
+                                  child: ResourceInputScreen(dataId: data.id),
+                                ),
+                              );
+                            },
+                          );
+                          break;
+                        case CompletionState.detailed:
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              // ResourceInputScreen을 AlertDialog로 감싸서 팝업 형태로 만듭니다.
+                              return AlertDialog(
+                                contentPadding: const EdgeInsets.all(0),
+                                // --- [추가] 디자인 속성들 ---
+                                backgroundColor: Colors.white, // 배경색
+                                elevation: 8.0, // 그림자 농도
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.0), // 모서리를 12만큼 둥글게
+                                ),
+                                // [수정] SizedBox로 감싸서 가로 길이를 고정합니다.
+                                content: SizedBox(
+                                  width: MediaQuery.of(context).size.width * 0.9, // 화면 너비의 90%
+                                  child: ResourceInputScreen(dataId: data.id,
+                                  // [수정] '수정' 모드를 위해 기존 자원 증감 값을 전달합니다.
+                                  initialChanges: data.resourceChanges,),
+                                ),
+                              );
+                            },
+                          );
+                          break;
+                      }
+                    },
+                    onLongPress: () {
+                      // [추가] 꾹 누르면 상태 되돌리기 및 상태바 재계산
+                      final dataProvider = context.read<DataProvider>();
+                      dataProvider.revertCompletionState(data.id);
+                      
+                      final resourceProvider = context.read<ResourceProvider>();
+                      final statusProvider = context.read<StatusProvider>();
+                      statusProvider.recalculateStatus(dataProvider.allData, resourceProvider.resources);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: _buildCompletionIcon(context, data),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
