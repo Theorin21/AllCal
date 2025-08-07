@@ -253,7 +253,7 @@ class DailyListView extends StatelessWidget {
 
     switch (data.type) {
       case ItemType.schedule:
-        if (start == null || end == null) return '';
+        if (end == null) return '';
         final isSameDay = DateUtils.isSameDay(start, end);
         if (isSameDay) return '${timeFormat.format(start)} - ${timeFormat.format(end)}';
         
@@ -266,17 +266,13 @@ class DailyListView extends StatelessWidget {
         return '';
       
       case ItemType.deadline:
-        // [수정] start -> end로 변경
-      if (end == null) return '';
-        return '~ ${timeFormat.format(end)}';  
-
+        return '~ ${timeFormat.format(start)}';
+      
       case ItemType.task:
         return '';
 
       case ItemType.record:
-        // [수정] start -> end로 변경
-        if (end == null) return '';
-        return timeFormat.format(end);
+        return timeFormat.format(start);
       
       default:
         return '';
