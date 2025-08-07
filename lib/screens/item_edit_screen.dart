@@ -23,8 +23,9 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
   late TextEditingController _titleController;
   late TextEditingController _memoController;
   late Category? _selectedCategory;
-  late DateTime _startDate;
-  late DateTime _endDate;
+  // [수정] null 값을 가질 수 있도록 DateTime? 타입으로 변경
+  late DateTime? _startDate;
+  late DateTime? _endDate;
   late ItemType _currentItemType; // [추가] 변경 가능한 itemType 상태 변수
 
   @override
@@ -36,8 +37,23 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
 
     _titleController = TextEditingController(text: widget.data?.title ?? '');
     _memoController = TextEditingController(text: widget.data?.memo ?? '');
-    _startDate = widget.data?.startTime ?? DateTime.now();
-    _endDate = widget.data?.endTime ?? _startDate.add(const Duration(hours: 1));
+    // [수정] 타입에 따라 startTime과 endTime을 다르게 초기화하는 로직
+    if (widget.data != null) {
+      // 수정 모드일 경우, 기존 데이터를 그대로 불러옴
+      _startDate = widget.data!.startTime;
+      _endDate = widget.data!.endTime;
+    } else {
+      // 만들기 모드일 경우
+      if (widget.itemType == ItemType.schedule || widget.itemType == ItemType.task) {
+        // 일정/할일은 시작/종료 시간이 모두 필요
+        _startDate = DateTime.now();
+        _endDate = _startDate!.add(const Duration(hours: 1));
+      } else {
+        // 기한/기록은 시작 시간이 필요 없으므로 null로 시작
+        _startDate = null;
+        _endDate = DateTime.now();
+      }
+    }
 
     if (widget.data != null) {
       try {
@@ -77,9 +93,10 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
       type: _currentItemType, // [수정]
       title: _titleController.text,
       categoryId: _selectedCategory!.id,
-      isAllDay: widget.data?.isAllDay ?? false, // isAllDay는 수정 화면에서 바꿀 수 없음 (임시)
+      isAllDay: _currentItemType == ItemType.task,
+      // [수정] 모든 타입이 startTime과 endTime을 저장하도록 변경
       startTime: _startDate,
-      endTime: (widget.itemType == ItemType.schedule || widget.itemType == ItemType.deadline) ? _endDate : null,
+      endTime: _endDate,
       memo: (widget.itemType == ItemType.task || widget.itemType == ItemType.record) ? _memoController.text : null,
       completionState: widget.data?.completionState ?? CompletionState.notCompleted, // 기존 상태 유지
       resourceChanges: widget.data?.resourceChanges ?? [], // 기존 자원 기록 유지
@@ -122,12 +139,19 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
   // [추가] 타입 변경 시 데이터 변환 로직을 처리하는 함수
   void _onTypeChanged(ItemType newType) {
     setState(() {
-      // 예시: 일정 -> 기한으로 변경 시, 시작 시간을 기한 시간으로 복사
-      if (widget.itemType == ItemType.schedule && newType == ItemType.deadline) {
-        _endDate = _startDate;
-      }
-      // TODO: 다른 모든 타입 변경 경우에 대한 데이터 변환 규칙 추가
+      final previousType = _currentItemType;
       
+      // [핵심] 지능적인 startTime 생성 규칙
+      // 1. startTime이 필요한 타입('일정', '할일')으로 변경되는데,
+      final bool needsStartTime = newType == ItemType.schedule || newType == ItemType.task;
+      // 2. 이전에 startTime이 필요 없던 타입('기한', '기록')이었을 경우,
+      final bool wasStartTimeOptional = previousType == ItemType.deadline || previousType == ItemType.record;
+
+      // 3. 그리고 startTime이 실제로 값이 없는 경우에만
+      if (needsStartTime && wasStartTimeOptional && _startDate == null) {
+        // 기존 endDate보다 1시간 전으로 startDate를 설정합니다.
+        _startDate = _endDate?.subtract(const Duration(hours: 1));
+      }
       // [수정] widget.itemType = newType; -> _currentItemType = newType;
       _currentItemType = newType;
     });
@@ -260,13 +284,13 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
       children: [
         _DateTimePickerRow(
           label: '시작',
-          date: _startDate,
+          date: _startDate!,
           mode: CupertinoDatePickerMode.dateAndTime,
           onChanged: (newDate) => setState(() => _startDate = newDate),
         ),
         _DateTimePickerRow(
           label: '종료',
-          date: _endDate,
+          date: _endDate!,
           mode: CupertinoDatePickerMode.dateAndTime,
           onChanged: (newDate) => setState(() => _endDate = newDate),
         ),
@@ -277,9 +301,10 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
   Widget _buildDeadlineFields() {
     return _DateTimePickerRow(
       label: '기한',
-      date: _startDate, // 기한은 startTime에 저장
+      // [수정] 기한은 _endDate를 사용하도록 변경
+      date: _endDate!, 
       mode: CupertinoDatePickerMode.dateAndTime,
-      onChanged: (newDate) => setState(() => _startDate = newDate),
+      onChanged: (newDate) => setState(() => _endDate = newDate),
     );
   }
 
@@ -288,13 +313,13 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
       children: [
         _DateTimePickerRow(
           label: '시작 날짜',
-          date: _startDate,
+          date: _startDate!,
           mode: CupertinoDatePickerMode.date,
           onChanged: (newDate) => setState(() => _startDate = newDate),
         ),
         _DateTimePickerRow(
           label: '종료 날짜',
-          date: _endDate,
+          date: _endDate!,
           mode: CupertinoDatePickerMode.date,
           onChanged: (newDate) => setState(() => _endDate = newDate),
         ),
@@ -309,9 +334,9 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
       children: [
         _DateTimePickerRow(
           label: '날짜',
-          date: _startDate,
+          date: _endDate!, // [수정] 기록은 _endDate를 사용
           mode: CupertinoDatePickerMode.dateAndTime,
-          onChanged: (newDate) => setState(() => _startDate = newDate),
+          onChanged: (newDate) => setState(() => _endDate = newDate),
         ),
         const Divider(),
         _buildMemoField(),
