@@ -9,7 +9,6 @@ class DataProvider extends ChangeNotifier {
     DailyData(id: '2', title: '헬스', type: ItemType.task, categoryId: '4'),
     DailyData(id: '3', title: '프로젝트 기획서 제출', type: ItemType.deadline, categoryId: '1', startTime: DateTime.now().add(const Duration(hours: 8))),
     DailyData(id: '4', title: '저녁 약속', type: ItemType.schedule, categoryId: '1', startTime: DateTime.now().add(const Duration(hours: 9)), endTime: DateTime.now().add(const Duration(hours: 10))),
-    DailyData(id: '5', title: '어제 회의 기록', type: ItemType.record, categoryId: '3', completionState: CompletionState.detailed),
   ];
   
   List<DailyData> get allData => _allData;

@@ -23,8 +23,18 @@ class BottomStatusBar extends StatelessWidget {
     
     return Container(
       height: 80,
-      color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.white, // 배경색은 흰색 유지
+        boxShadow: [
+          // 위쪽에만 은은한 그림자를 추가
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // 그림자 색상
+            blurRadius: 4, // 흐림 효과 반경
+            offset: const Offset(0, -2), // 그림자 위치 (y축 위쪽으로 -2)
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(

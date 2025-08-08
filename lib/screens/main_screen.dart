@@ -60,7 +60,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final schedules = allDayData.where((d) => d.type == ItemType.schedule).toList();
     final deadlines = allDayData.where((d) => d.type == ItemType.deadline).toList();
     final tasks = allDayData.where((d) => d.type == ItemType.task).toList();
-    final records = allDayData.where((d) => d.type == ItemType.record).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -71,66 +70,87 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           Column(
             children: [
               const SizedBox(
-                height: 450,
+                height: 400,
                 child: CustomMonthlyCalendar(),
               ),
               const Divider(height: 1, color: Colors.black12),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final totalHeight = constraints.maxHeight;
-
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Expanded(child: DailyListView(items: schedules)),
-                              if (deadlines.isNotEmpty) ...[
-                                DraggableDivider(
-                                  onDrag: (details) {
-                                    final newHeight = uiProvider.deadlinePanelHeight - details.delta.dy;
-                                    final maxHeight = totalHeight - 80;
-                                    uiProvider.setDeadlinePanelHeight(newHeight, maxHeight);
-                                  },
-                                ),
-                                SizedBox(
-                                  height: uiProvider.deadlinePanelHeight,
-                                  child: DailyListView(items: deadlines),
-                                ),
-                              ]
-                            ],
-                          ),
-                        ),
-                        const VerticalDivider(width: 1, color: Colors.black12),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Expanded(child: DailyListView(items: tasks)),
-                              if (records.isNotEmpty) ...[
-                                DraggableDivider(
-                                  onDrag: (details) {
-                                    final newHeight = uiProvider.recordPanelHeight - details.delta.dy;
-                                    final maxHeight = totalHeight - 80;
-                                    uiProvider.setRecordPanelHeight(newHeight, maxHeight);
-                                  },
-                                ),
-                                SizedBox(
-                                  height: uiProvider.recordPanelHeight,
-                                  child: DailyListView(items: records),
-                                ),
-                              ]
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  }
+                // [수정] 1층: 기본 좌우 분할 목록
+                child: Row(
+                  children: [
+                    Expanded(child: DailyListView(items: schedules)),
+                    const VerticalDivider(width: 1, color: Colors.black12),
+                    Expanded(child: DailyListView(items: tasks)),
+                  ],
                 ),
               ),
-              BottomStatusBar(onAddPressed: _toggleFab),
+              const SizedBox(height: 80), // 상태 바가 들어갈 빈 공간 확보
             ],
           ),
+
+          // [수정] 2층: 기한 패널 (조건부 표시)
+          if (deadlines.isNotEmpty)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 80,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final parentHeight = MediaQuery.of(context).size.height - 400 - 80 - MediaQuery.of(context).padding.top - kToolbarHeight;
+                  final maxHeight = parentHeight;
+
+                  // [수정] 이전의 Container와 BoxDecoration을 사용하는 코드로 복구합니다.
+                  return Container(
+                    height: uiProvider.deadlinePanelHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white, // 배경색
+                      // 그림자는 직선으로 표시되는 이전 방식
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, -2),
+                        ),
+                      ],
+                      // 둥근 모서리
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    // 내용물을 둥글게 잘라내서 구분선이 삐져나오지 않도록 합니다.
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          DraggableDivider(
+                            onDrag: (details) {
+                              final newHeight = uiProvider.deadlinePanelHeight - details.delta.dy;
+                              uiProvider.setDeadlinePanelHeight(newHeight, maxHeight);
+                            },
+                          ),
+                          Expanded(
+                            child: DailyListView(items: deadlines),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // 3층: 상태 바 (항상 표시)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: BottomStatusBar(onAddPressed: _toggleFab),
+          ),
+
           ExpandingFab(
             isOpen: _isFabOpen,
             animationController: _fabController,

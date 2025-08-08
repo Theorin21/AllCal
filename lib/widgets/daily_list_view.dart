@@ -64,7 +64,7 @@ class DailyListView extends StatelessWidget {
                       size: const Size(4, 30),
                       painter: DeadlinePainter(color: categoryColor),
                     ),
-                  if (data.type == ItemType.task || data.type == ItemType.record)
+                  if (data.type == ItemType.task)
                     Container(width: 8, height: 8, decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)),
                   
                   const SizedBox(width: 8),
@@ -270,9 +270,6 @@ class DailyListView extends StatelessWidget {
       
       case ItemType.task:
         return '';
-
-      case ItemType.record:
-        return timeFormat.format(start);
       
       default:
         return '';

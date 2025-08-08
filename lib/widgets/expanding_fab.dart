@@ -33,7 +33,6 @@ class _ExpandingFabState extends State<ExpandingFab> {
     FabAction(label: '일정', icon: Icons.schedule, type: ItemType.schedule),
     FabAction(label: '기한', icon: Icons.flag_outlined, type: ItemType.deadline),
     FabAction(label: '할일', icon: Icons.check_box_outlined, type: ItemType.task),
-    FabAction(label: '기록', icon: Icons.edit_note_outlined, type: ItemType.record),
   ];
 
   @override

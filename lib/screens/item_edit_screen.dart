@@ -62,7 +62,6 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
       case ItemType.schedule: return '일정';
       case ItemType.deadline: return '기한';
       case ItemType.task: return '할일';
-      case ItemType.record: return '기록';
     }
   }
 
@@ -80,7 +79,7 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
       isAllDay: widget.data?.isAllDay ?? false, // isAllDay는 수정 화면에서 바꿀 수 없음 (임시)
       startTime: _startDate,
       endTime: (widget.itemType == ItemType.schedule || widget.itemType == ItemType.deadline) ? _endDate : null,
-      memo: (widget.itemType == ItemType.task || widget.itemType == ItemType.record) ? _memoController.text : null,
+      memo: (widget.itemType == ItemType.task) ? _memoController.text : null,
       completionState: widget.data?.completionState ?? CompletionState.notCompleted, // 기존 상태 유지
       resourceChanges: widget.data?.resourceChanges ?? [], // 기존 자원 기록 유지
     );
@@ -220,22 +219,6 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
           if (_currentItemType == ItemType.schedule) _buildScheduleFields(), // [수정]
           if (_currentItemType == ItemType.deadline) _buildDeadlineFields(), // [수정]
           if (_currentItemType == ItemType.task) _buildTaskFields(),       // [수정]
-          if (_currentItemType == ItemType.record) _buildRecordFields(),     // [수정]
-          
-          if (_currentItemType != ItemType.record) ...[ // [수정]
-            const Divider(),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.notifications_outlined),
-              title: const Text('알림'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                 Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const NotificationSettingScreen(),
-                ));
-              },
-            ),
-          ]
         ],
       ),
     );
@@ -250,8 +233,6 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
         return '기한';
       case ItemType.task:
         return '할일';
-      case ItemType.record:
-        return '기록';
     }
   }
 
@@ -297,21 +278,6 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
           date: _endDate,
           mode: CupertinoDatePickerMode.date,
           onChanged: (newDate) => setState(() => _endDate = newDate),
-        ),
-        const Divider(),
-        _buildMemoField(),
-      ],
-    );
-  }
-
-  Widget _buildRecordFields() {
-    return Column(
-      children: [
-        _DateTimePickerRow(
-          label: '날짜',
-          date: _startDate,
-          mode: CupertinoDatePickerMode.dateAndTime,
-          onChanged: (newDate) => setState(() => _startDate = newDate),
         ),
         const Divider(),
         _buildMemoField(),

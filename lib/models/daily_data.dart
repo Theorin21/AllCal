@@ -9,7 +9,7 @@ enum CompletionState {
 }
 
 // 데이터 타입을 명확히 구분하기 위한 열거형(enum)
-enum ItemType { schedule, deadline, task, record }
+enum ItemType { schedule, deadline, task, }
 
 class DailyData {
   final String id;
