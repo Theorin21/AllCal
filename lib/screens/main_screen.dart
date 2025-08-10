@@ -78,9 +78,45 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                 // [수정] 1층: 기본 좌우 분할 목록
                 child: Row(
                   children: [
-                    Expanded(child: DailyListView(items: schedules)),
+                    Expanded(
+                      child: DragTarget<DailyData>(
+                        builder: (context, candidateData, rejectedData) {
+                          // 드래그 중인 아이템이 위로 올라왔을 때 배경색 변경
+                          bool isTarget = candidateData.isNotEmpty && candidateData.first?.type == ItemType.task;
+                          return Container(
+                            color: isTarget ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                            child: DailyListView(items: schedules),
+                          );
+                        },
+                        // '할일' 타입만 받도록 설정
+                        onWillAccept: (data) => data?.type == ItemType.task,
+                        // 드롭 성공 시 타입 변경 함수 호출
+                        onAccept: (data) {
+                          context.read<DataProvider>().changeItemType(data.id, ItemType.schedule);
+                        },
+                      ),
+                    ),
                     const VerticalDivider(width: 1, color: Colors.black12),
-                    Expanded(child: DailyListView(items: tasks)),
+                    // =============================================
+                    // ✨ 2. '할일' 목록을 DragTarget으로 감싸기 ✨
+                    // =============================================
+                    Expanded(
+                      child: DragTarget<DailyData>(
+                        builder: (context, candidateData, rejectedData) {
+                          bool isTarget = candidateData.isNotEmpty && candidateData.first?.type == ItemType.schedule;
+                          return Container(
+                            color: isTarget ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                            child: DailyListView(items: tasks),
+                          );
+                        },
+                        // '일정' 타입만 받도록 설정
+                        onWillAccept: (data) => data?.type == ItemType.schedule,
+                        // 드롭 성공 시 타입 변경 함수 호출
+                        onAccept: (data) {
+                          context.read<DataProvider>().changeItemType(data.id, ItemType.task);
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),

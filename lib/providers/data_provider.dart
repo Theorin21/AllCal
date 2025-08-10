@@ -58,6 +58,56 @@ class DataProvider extends ChangeNotifier {
     }
   }
 
+  void changeItemType(String id, ItemType newType) {
+    try {
+      final oldItemIndex = _allData.indexWhere((i) => i.id == id);
+      if (oldItemIndex == -1) return;
+
+      final oldItem = _allData[oldItemIndex];
+      if (oldItem.type == newType) return;
+
+      DateTime? newStartTime = oldItem.startTime;
+      DateTime? newEndTime = oldItem.endTime;
+
+      // 타입 변경에 따른 데이터 조정
+      if (newType == ItemType.task) {
+        if(newStartTime != null) newStartTime = DateUtils.dateOnly(newStartTime);
+        if(newEndTime != null) newEndTime = DateUtils.dateOnly(newEndTime);
+      } else if (newType == ItemType.schedule) {
+        if(newStartTime != null) {
+          newStartTime = DateTime(newStartTime.year, newStartTime.month, newStartTime.day, 9, 0);
+        }
+        if(newEndTime != null) {
+          newEndTime = DateTime(newEndTime.year, newEndTime.month, newEndTime.day, 10, 0);
+        } else {
+          newEndTime = newStartTime?.add(const Duration(hours: 1));
+        }
+      }
+
+      // 기존 정보를 바탕으로 타입과 시간만 변경된 새 객체 생성
+      final newItem = DailyData(
+        id: oldItem.id,
+        type: newType, // 타입 변경
+        title: oldItem.title,
+        categoryId: oldItem.categoryId,
+        startTime: newStartTime, // 시간 변경
+        endTime: newEndTime,     // 시간 변경
+        isAllDay: oldItem.isAllDay,
+        memo: oldItem.memo,
+        notifications: oldItem.notifications,
+        completionState: oldItem.completionState,
+        resourceChanges: oldItem.resourceChanges,
+      );
+
+      // 기존 객체를 새 객체로 교체
+      _allData[oldItemIndex] = newItem;
+
+      notifyListeners();
+    } catch (e) {
+      print('Could not find data with id: $id to change type.');
+    }
+  }
+
   // [추가] 자원 변화량을 저장하고 상태를 'detailed'로 바꾸는 함수
   void addResourceChanges(String id, List<ResourceChange> changes) {
     try {
