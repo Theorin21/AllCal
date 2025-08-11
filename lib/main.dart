@@ -21,12 +21,22 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        // CategoryProvider를 먼저 생성
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => CalendarProvider()),
-        ChangeNotifierProvider(create: (_) => DataProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryProvider()), // [추가]
-        ChangeNotifierProvider(create: (_) => UiProvider()), // [추가]
-        ChangeNotifierProvider(create: (_) => ResourceProvider()), // [추가]
-        ChangeNotifierProvider(create: (_) => StatusProvider()),   // [추가]
+        ChangeNotifierProvider(create: (_) => UiProvider()),
+        ChangeNotifierProvider(create: (_) => ResourceProvider()),
+        ChangeNotifierProvider(create: (_) => StatusProvider()),
+        
+        // =============================================
+        // ✨ DataProvider 생성 방식 변경 ✨
+        // =============================================
+        // 생성된 CategoryProvider를 읽어서 DataProvider에 전달
+        ChangeNotifierProxyProvider<CategoryProvider, DataProvider>(
+          create: (context) => DataProvider(context.read<CategoryProvider>()),
+          update: (context, categoryProvider, previousDataProvider) =>
+              DataProvider(categoryProvider),
+        ),
       ],
       child: const AllCalApp(),
     ),

@@ -17,15 +17,37 @@ class DailyListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: ListView.builder(
-        padding: EdgeInsets.zero,
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          return _buildListItem(context, items[index]);
-        },
-      ),
+    return ListView.builder(
+      // 아이템 개수 + 아이템 사이 공간 개수 (맨 위 포함)
+      itemCount: (items.length * 2) + 1,
+      padding: EdgeInsets.zero,
+      itemBuilder: (context, index) {
+        // 짝수 index는 DragTarget (아이템을 놓을 수 있는 공간)
+        if (index.isEven) {
+          final dropIndex = index ~/ 2;
+          return DragTarget<DailyData>(
+            builder: (context, candidateData, rejectedData) {
+              // 드래그 중인 아이템이 위로 올라왔을 때 시각적 피드백
+              bool isTarget = candidateData.isNotEmpty;
+              return Container(
+                height: isTarget ? 50 : 10, // 드래그 중일 때 영역을 넓혀서 드롭하기 쉽게 만듬
+                color: isTarget ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+              );
+            },
+            onWillAccept: (data) => data?.type == ItemType.task, // '할일'만 받음
+            onAccept: (data) {
+              final selectedDay = context.read<CalendarProvider>().selectedDay;
+              // 이제 명확한 dropIndex를 전달할 수 있음
+              context.read<DataProvider>().convertTaskToSchedule(data, dropIndex, selectedDay);
+            },
+          );
+        }
+        
+        // 홀수 index는 실제 아이템
+        final itemIndex = (index - 1) ~/ 2;
+        final data = items[itemIndex];
+        return _buildListItem(context, data); // _buildListItem 함수는 이전과 동일
+      },
     );
   }
 

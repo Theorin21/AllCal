@@ -22,7 +22,6 @@ class BottomStatusBar extends StatelessWidget {
     final capitalResource = resourceProvider.resources.firstWhere((r) => r.id == 'capital');
     
     return Container(
-      height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
       decoration: BoxDecoration(
         color: Colors.white, // 배경색은 흰색 유지

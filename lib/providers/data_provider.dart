@@ -2,6 +2,7 @@ import 'package:allcal/models/daily_data.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:allcal/models/resource.dart'; // [추가]
+import 'package:allcal/providers/category_provider.dart'; // 카테고리 프로바이더 import
 
 class DataProvider extends ChangeNotifier {
   final List<DailyData> _allData = [
@@ -11,11 +12,55 @@ class DataProvider extends ChangeNotifier {
     DailyData(id: '4', title: '저녁 약속', type: ItemType.schedule, categoryId: '1', startTime: DateTime.now().add(const Duration(hours: 9)), endTime: DateTime.now().add(const Duration(hours: 10))),
   ];
   
+  final CategoryProvider _categoryProvider;
+
+  DataProvider(this._categoryProvider) {
+    // 생성 시점에 초기 정렬을 한 번 수행
+    _sortAndNotify();
+  }
+
   List<DailyData> get allData => _allData;
+
+  void _sortAndNotify() {
+    // CategoryProvider의 최신 카테고리 목록을 가져옴
+    final categories = _categoryProvider.categories;
+
+    _allData.sort((a, b) {
+      // 1. 타입이 다르면, '일정'이 항상 '할일'보다 먼저 오도록 함
+      if (a.type != b.type) {
+        return a.type == ItemType.schedule ? -1 : 1;
+      }
+
+      // 2. 타입이 '일정'으로 같으면, 시간순으로 정렬
+      if (a.type == ItemType.schedule) {
+        if (a.startTime == null) return 1;
+        if (b.startTime == null) return -1;
+        return a.startTime!.compareTo(b.startTime!);
+      }
+      
+      // 3. 타입이 '할일'으로 같으면, 카테고리 우선순위로 정렬
+      if (a.type == ItemType.task) {
+        final priorityA = categories.indexWhere((c) => c.id == a.categoryId);
+        final priorityB = categories.indexWhere((c) => c.id == b.categoryId);
+        
+        if (priorityA == -1) return 1;
+        if (priorityB == -1) return -1;
+
+        // 우선순위가 같으면 순서를 바꾸지 않음 (생성 순 유지)
+        if (priorityA != priorityB) {
+          return priorityA.compareTo(priorityB);
+        }
+      }
+      
+      // 그 외의 경우 (같은 카테고리 내의 할일 등) 순서 유지
+      return 0;
+    });
+    notifyListeners();
+  }
   
   void addData(DailyData data) {
     _allData.add(data);
-    notifyListeners();
+    _sortAndNotify(); // notifyListeners() 대신 호출
   }
 
   // [수정] notCompleted -> completed 상태로만 변경하는 함수
@@ -51,7 +96,7 @@ class DataProvider extends ChangeNotifier {
       if (index != -1) {
         // 해당 인덱스의 기존 데이터를 새로운 데이터로 교체합니다.
         _allData[index] = updatedData;
-        notifyListeners(); // 변경사항을 알립니다.
+        _sortAndNotify(); // notifyListeners() 대신 호출
       }
     } catch (e) {
       print('Could not find data with id: ${updatedData.id}');
@@ -102,9 +147,77 @@ class DataProvider extends ChangeNotifier {
       // 기존 객체를 새 객체로 교체
       _allData[oldItemIndex] = newItem;
 
-      notifyListeners();
+    _sortAndNotify();
     } catch (e) {
       print('Could not find data with id: $id to change type.');
+    }
+  }
+
+  void convertTaskToSchedule(DailyData task, int dropIndex, DateTime date) {
+    try {
+      final oldItemIndex = _allData.indexWhere((i) => i.id == task.id);
+      if (oldItemIndex == -1) return;
+
+      // 설정 가능한 쿠션 간격 (분 단위), 지금은 0으로 고정
+      const _cushionInMinutes = 0;
+      final cushion = const Duration(minutes: _cushionInMinutes);
+
+      // 해당 날짜의 '일정'만 시간순으로 정렬해서 가져옴
+      final schedules = _allData.where((d) => d.type == ItemType.schedule && DateUtils.isSameDay(d.startTime, date)).toList()
+        ..sort((a, b) => a.startTime!.compareTo(b.startTime!));
+
+      DateTime newStartTime;
+      DateTime newEndTime;
+
+      if (schedules.isEmpty) {
+        // 케이스 1: 그날 일정이 하나도 없을 때
+        newStartTime = DateTime.now();
+        newEndTime = newStartTime.add(const Duration(hours: 1));
+      } else if (dropIndex <= 0) {
+        // 케이스 2: 맨 앞에 드롭했을 때
+        newEndTime = schedules.first.startTime!.subtract(cushion);
+        newStartTime = newEndTime.subtract(const Duration(hours: 1));
+      } else if (dropIndex >= schedules.length) {
+        // 케이스 3: 맨 뒤에 드롭했을 때
+        newStartTime = schedules.last.endTime!.add(cushion);
+        newEndTime = newStartTime.add(const Duration(hours: 1));
+      } else {
+        // 케이스 4: 두 일정 사이에 드롭했을 때
+        final prevSchedule = schedules[dropIndex - 1];
+        final nextSchedule = schedules[dropIndex];
+
+        final gap = nextSchedule.startTime!.difference(prevSchedule.endTime!);
+
+        // 빈틈이 (쿠션*2)보다 작으면 아무것도 하지 않고 종료
+        if (gap.inMinutes <= _cushionInMinutes * 2) {
+          return; 
+        }
+
+        newStartTime = prevSchedule.endTime!.add(cushion);
+        newEndTime = nextSchedule.startTime!.subtract(cushion);
+      }
+
+      // 새 정보로 객체 생성
+      final newItem = DailyData(
+        id: task.id,
+        type: ItemType.schedule, // 타입 변경
+        title: task.title,
+        categoryId: task.categoryId,
+        startTime: newStartTime, // 계산된 시간 적용
+        endTime: newEndTime,     // 계산된 시간 적용
+        isAllDay: false,
+        memo: task.memo,
+        notifications: task.notifications,
+        completionState: task.completionState,
+        resourceChanges: task.resourceChanges,
+      );
+
+      // 기존 '할일'을 새로 생성된 '일정'으로 교체
+      _allData[oldItemIndex] = newItem;
+      _sortAndNotify(); // notifyListeners() 대신 호출
+
+    } catch (e) {
+      print('Failed to convert task to schedule: $e');
     }
   }
 
