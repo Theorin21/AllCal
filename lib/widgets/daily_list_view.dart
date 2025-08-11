@@ -62,56 +62,60 @@ class DailyListView extends StatelessWidget {
     final timeText = _formatTimeText(data, context);
     final bool isFinished = data.completionState != CompletionState.notCompleted;
 
-    final Widget draggableContent = Row(
-      children: [
-        if (data.type == ItemType.schedule)
-          Container(width: 4, height: 30, color: categoryColor),
-        if (data.type == ItemType.deadline)
-          CustomPaint(
-            size: const Size(4, 30),
-            painter: DeadlinePainter(color: categoryColor),
-          ),
-        if (data.type == ItemType.task)
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)),
-        
-        const SizedBox(width: 8),
+  final Widget draggableContent = Stack(
+    children: [
+      // --- 배경: 마커 ---
+      // 타입에 따라 다른 마커 위젯을 여기에 배치합니다.
+      if (data.type == ItemType.schedule)
+        // Container는 Stack의 자식일 때 높이를 지정하지 않으면 자동으로 꽉 채웁니다.
+        Container(width: 5, color: categoryColor),
 
-        Expanded(
-          // 기존의 수정 화면 이동 onTap 기능은 그대로 유지
-          child: GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => ItemEditScreen(itemType: data.type, data: data),
-                fullscreenDialog: true,
-              ));
-            },
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data.title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
-                    color: isFinished ? Colors.grey : Colors.black,
-                  ),
-                ),
-                if (timeText.isNotEmpty)
-                  Text(
-                    timeText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
-                    ),
-                  ),
-              ],
-            ),
-          ),
+      if (data.type == ItemType.deadline)
+        // LayoutBuilder를 사용해 부모(Stack)의 높이를 가져와 painter에게 전달합니다.
+        LayoutBuilder(builder: (context, constraints) {
+          return CustomPaint(
+            size: Size(5, constraints.maxHeight),
+            painter: DeadlinePainter(color: categoryColor),
+          );
+        }),
+      
+      if (data.type == ItemType.task)
+        // Align 위젯으로 감싸서 중앙에 정렬되도록 합니다.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(width: 10, height: 10, decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)),
         ),
-      ],
-    );
+      
+      // --- 전경: 텍스트 ---
+      // 마커와 겹치지 않도록 왼쪽에 패딩을 줍니다.
+      Padding(
+        padding: const EdgeInsets.only(left: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center, // 세로 중앙 정렬
+          children: [
+            Text(
+              data.title,
+              style: TextStyle(
+                fontSize: 15,
+                decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+                color: isFinished ? Colors.grey : Colors.black,
+              ),
+            ),
+            if (timeText.isNotEmpty)
+              Text(
+                timeText,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+                ),
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
     
     final Widget nonDraggableContent = GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -185,7 +189,7 @@ class DailyListView extends StatelessWidget {
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.fromLTRB(16, 4, 0, 4), 
       child: Row(
         children: [
           // [수정] Expanded 부분을 GestureDetector로 감싸서 터치 영역을 확장합니다.
@@ -230,9 +234,9 @@ class DailyListView extends StatelessWidget {
   Widget _buildCompletionIcon(BuildContext context, DailyData data) {
     switch (data.completionState) {
       case CompletionState.notCompleted:
-        return const Icon(Icons.check_box_outline_blank, color: Colors.grey);
+        return const Icon(Icons.check_box_outline_blank, color: Colors.black);
       case CompletionState.completed:
-        return const Icon(Icons.add, color: Colors.grey);
+        return const Icon(Icons.check_box, color: Colors.black);
       case CompletionState.detailed:
         // 자원 정보를 가져오기 위해 ResourceProvider에 접근
         final resourceProvider = context.read<ResourceProvider>();
@@ -321,18 +325,21 @@ class DeadlinePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 3
+      ..strokeWidth = 5
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round; // 꺾이는 부분을 부드럽게 연결
 
-    const cornerSize = 6.0;
+    // 꼬리가 얼마나 높이 올라갈지 (꼬리의 길이)
+    const tailHeight = 8.0;
+    // 꼬리가 수평으로 얼마나 나아갈지 (꼬리의 너비)
+    const tailWidth = 4.0;
 
-    final path = Path();
-    
-    path.moveTo(size.width / 2, 0);
-    path.lineTo(size.width / 2, size.height - cornerSize);
-    path.lineTo(size.width, size.height);
-    path.lineTo(size.width / 2, size.height);
+    final path = Path()
+      ..moveTo(size.width / 2, 0) // 1. 위쪽 중앙에서 시작
+      ..lineTo(size.width / 2, size.height) // 2. 아래쪽 중앙 끝까지 내림
+      // 3. (중앙 + 너비) 만큼 오른쪽, (전체 높이 - 높이) 만큼 위로 꼬리를 그림
+      ..lineTo(size.width / 2 + tailWidth, size.height - tailHeight); 
 
     canvas.drawPath(path, paint);
   }

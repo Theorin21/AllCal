@@ -43,13 +43,13 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             // [수정] 날짜를 'yyyy.MM.' 형식으로 동적으로 표시합니다.
             Text(DateFormat('yyyy.MM.').format(displayDate)),
-            const Icon(Icons.arrow_drop_down, size: 24.0),
+            const Icon(Icons.keyboard_arrow_down, size: 24.0),
           ],
         ),
       ),
       actions: [
         IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.calendar_view_day)),
+        IconButton(onPressed: () {}, icon: const Icon(Icons.calendar_today)),
       ],
       elevation: 0,
       backgroundColor: Colors.white,
