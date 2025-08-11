@@ -61,61 +61,73 @@ class DailyListView extends StatelessWidget {
 
     final timeText = _formatTimeText(data, context);
     final bool isFinished = data.completionState != CompletionState.notCompleted;
-
-  final Widget draggableContent = Stack(
-    children: [
-      // --- 배경: 마커 ---
-      // 타입에 따라 다른 마커 위젯을 여기에 배치합니다.
-      if (data.type == ItemType.schedule)
-        // Container는 Stack의 자식일 때 높이를 지정하지 않으면 자동으로 꽉 채웁니다.
-        Container(width: 5, color: categoryColor),
-
-      if (data.type == ItemType.deadline)
-        // LayoutBuilder를 사용해 부모(Stack)의 높이를 가져와 painter에게 전달합니다.
-        LayoutBuilder(builder: (context, constraints) {
-          return CustomPaint(
-            size: Size(5, constraints.maxHeight),
-            painter: DeadlinePainter(color: categoryColor),
-          );
-        }),
-      
-      if (data.type == ItemType.task)
-        // Align 위젯으로 감싸서 중앙에 정렬되도록 합니다.
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Container(width: 10, height: 10, decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)),
-        ),
-      
-      // --- 전경: 텍스트 ---
-      // 마커와 겹치지 않도록 왼쪽에 패딩을 줍니다.
-      Padding(
-        padding: const EdgeInsets.only(left: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center, // 세로 중앙 정렬
-          children: [
-            Text(
-              data.title,
-              style: TextStyle(
-                fontSize: 15,
-                decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
-                color: isFinished ? Colors.grey : Colors.black,
+    
+    final Widget draggableContent = IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch, // 자식들이 높이를 꽉 채우도록 함
+        children: [
+          // --- 1. 마커 ---
+          if (data.type == ItemType.schedule)
+            Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: categoryColor,
+                borderRadius: BorderRadius.circular(10), // 숫자가 클수록 더 둥글어집니다.
               ),
             ),
-            if (timeText.isNotEmpty)
-              Text(
-                timeText,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
-                ),
+          if (data.type == ItemType.deadline)
+            // 이제 LayoutBuilder가 필요 없음
+            CustomPaint(
+              size: const Size(5, double.infinity), // IntrinsicHeight에 맞춰 늘어남
+              painter: DeadlinePainter(color: categoryColor),
+            ),
+          
+          if (data.type == ItemType.task)
+            // 동그라미는 세로 중앙에 배치
+            Center(
+              child: Container(
+                width: 10, height: 10,
+                margin: const EdgeInsets.only(right: 6), // 텍스트와 간격 확보
+                decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)
               ),
-          ],
-        ),
+            ),
+          
+          // 마커와 텍스트 사이에 간격 추가
+          if (data.type != ItemType.task)
+              const SizedBox(width: 16.0),
+
+          // --- 2. 텍스트 내용 ---
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  data.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+                    color: isFinished ? Colors.grey : Colors.black,
+                  ),
+                ),
+                if (timeText.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2.0),
+                    child: Text(
+                      timeText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
-    ],
-  );
+    );
     
     final Widget nonDraggableContent = GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -189,7 +201,7 @@ class DailyListView extends StatelessWidget {
     );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 0, 4), 
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4), 
       child: Row(
         children: [
           // [수정] Expanded 부분을 GestureDetector로 감싸서 터치 영역을 확장합니다.
@@ -205,8 +217,8 @@ class DailyListView extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8)
                   ),
-                  child: ConstrainedBox( // 너비를 제한하여 화면을 벗어나지 않도록 함
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.4),
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.4,
                     child: draggableContent,
                   ),
                 ),
@@ -216,8 +228,19 @@ class DailyListView extends StatelessWidget {
                 opacity: 0.4,
                 child: draggableContent,
               ),
-              // 드래그가 시작되지 않았을 때 보여질 기본 위젯
-              child: draggableContent,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => ItemEditScreen(itemType: data.type, data: data),
+                    fullscreenDialog: true,
+                  ));
+                },
+                // 탭 영역을 투명한 부분까지 확장
+                behavior: HitTestBehavior.opaque, 
+                // 이제 draggableContent가 GestureDetector의 자식이 됩니다.
+                // 드래그가 시작되지 않았을 때 보여질 기본 위젯
+                child: draggableContent,
+              ),
             ),
           ),
           

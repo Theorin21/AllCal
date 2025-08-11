@@ -16,20 +16,23 @@ class DataProvider extends ChangeNotifier {
 
   DataProvider(this._categoryProvider) {
     // 생성 시점에 초기 정렬을 한 번 수행
-    _sortAndNotify();
+    _sortData();
   }
 
   List<DailyData> get allData => _allData;
 
-  void _sortAndNotify() {
+  void _sortData() {
     // CategoryProvider의 최신 카테고리 목록을 가져옴
     final categories = _categoryProvider.categories;
 
     _allData.sort((a, b) {
-      // 1. 타입이 다르면, '일정'이 항상 '할일'보다 먼저 오도록 함
-      if (a.type != b.type) {
-        return a.type == ItemType.schedule ? -1 : 1;
-      }
+    // =============================================
+    // ✨ 1. 모순 없는 타입 정렬 규칙으로 변경 ✨
+    // =============================================
+    // 타입이 다르면, enum에 정의된 순서(schedule -> deadline -> task)로 정렬
+    if (a.type.index != b.type.index) {
+      return a.type.index.compareTo(b.type.index);
+    }
 
       // 2. 타입이 '일정'으로 같으면, 시간순으로 정렬
       if (a.type == ItemType.schedule) {
@@ -55,12 +58,12 @@ class DataProvider extends ChangeNotifier {
       // 그 외의 경우 (같은 카테고리 내의 할일 등) 순서 유지
       return 0;
     });
-    notifyListeners();
   }
   
   void addData(DailyData data) {
     _allData.add(data);
-    _sortAndNotify(); // notifyListeners() 대신 호출
+    _sortData();
+    notifyListeners();
   }
 
   // [수정] notCompleted -> completed 상태로만 변경하는 함수
@@ -96,7 +99,8 @@ class DataProvider extends ChangeNotifier {
       if (index != -1) {
         // 해당 인덱스의 기존 데이터를 새로운 데이터로 교체합니다.
         _allData[index] = updatedData;
-        _sortAndNotify(); // notifyListeners() 대신 호출
+        _sortData();
+        notifyListeners();
       }
     } catch (e) {
       print('Could not find data with id: ${updatedData.id}');
@@ -147,7 +151,8 @@ class DataProvider extends ChangeNotifier {
       // 기존 객체를 새 객체로 교체
       _allData[oldItemIndex] = newItem;
 
-    _sortAndNotify();
+    _sortData();
+    notifyListeners();
     } catch (e) {
       print('Could not find data with id: $id to change type.');
     }
@@ -214,7 +219,8 @@ class DataProvider extends ChangeNotifier {
 
       // 기존 '할일'을 새로 생성된 '일정'으로 교체
       _allData[oldItemIndex] = newItem;
-      _sortAndNotify(); // notifyListeners() 대신 호출
+      _sortData();
+      notifyListeners();
 
     } catch (e) {
       print('Failed to convert task to schedule: $e');
