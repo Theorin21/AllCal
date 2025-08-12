@@ -12,6 +12,15 @@ import 'package:allcal/providers/resource_provider.dart';
 import 'package:allcal/providers/status_provider.dart';
 
 // [2] async 추가
+
+// [추가] 스크롤 효과를 제거하는 커스텀 클래스를 추가합니다.
+class NoGlowScrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(
+      BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+}
 void main() async {
   // [3] 이 줄 추가: 플러터 엔진과 위젯을 연결하는 역할
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +57,8 @@ class AllCalApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AllCal',
+      // [수정] 아래 scrollBehavior 속성을 추가하여 앱 전체에 적용합니다.
+      scrollBehavior: NoGlowScrollBehavior(),
       theme: ThemeData(
         primarySwatch: Colors.grey,
         scaffoldBackgroundColor: Colors.white,
@@ -63,6 +74,9 @@ class AllCalApp extends StatelessWidget {
           foregroundColor: Colors.black,
           // 그림자 효과 제거하여 깔끔하게
           elevation: 0,
+
+          // [추가] 이 줄을 추가하여 스크롤 시 색상 변경을 비활성화합니다.
+          surfaceTintColor: Colors.white,
           
           // AppBar가 보일 때 적용될 시스템 UI 스타일
           systemOverlayStyle: SystemUiOverlayStyle(

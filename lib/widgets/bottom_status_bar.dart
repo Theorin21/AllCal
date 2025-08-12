@@ -35,35 +35,39 @@ class BottomStatusBar extends StatelessWidget {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            // [수정] Row -> Table로 변경하여 그리드 레이아웃을 다시 구현합니다.
-            child: Table(
-              // 각 열(Column)의 너비를 어떻게 정할지 정의합니다.
-              columnWidths: const <int, TableColumnWidth>{
-                0: IntrinsicColumnWidth(), // 0번 열(아이콘)은 내용물 크기에 맞춤
-                1: IntrinsicColumnWidth(), // 1번 열(자원 값)도 내용물 중 가장 넓은 것에 맞춤
-                2: FlexColumnWidth(),      // 2번 열(상태 바)은 남는 공간을 모두 차지
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                _buildStatusTableRow(
-                  resource: healthResource,
-                  value: statusProvider.currentStatus.health,
-                ),
-                _buildStatusTableRow(
-                  resource: mentalResource,
-                  value: statusProvider.currentStatus.mentalEnergy,
-                ),
-                _buildStatusTableRow(
-                  resource: capitalResource,
-                  value: statusProvider.currentStatus.capital,
-                ),
-              ],
+            // [수정] Table을 Center 위젯으로 감싸줍니다.
+            child: Center(
+              // [수정] Row -> Table로 변경하여 그리드 레이아웃을 다시 구현합니다.
+              child: Table(
+                // 각 열(Column)의 너비를 어떻게 정할지 정의합니다.
+                columnWidths: const <int, TableColumnWidth>{
+                  0: IntrinsicColumnWidth(), // 0번 열(아이콘)은 내용물 크기에 맞춤
+                  1: IntrinsicColumnWidth(), // 1번 열(자원 값)도 내용물 중 가장 넓은 것에 맞춤
+                  2: FlexColumnWidth(),      // 2번 열(상태 바)은 남는 공간을 모두 차지
+                },
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: [
+                  _buildStatusTableRow(
+                    resource: healthResource,
+                    value: statusProvider.currentStatus.health,
+                  ),
+                  _buildStatusTableRow(
+                    resource: mentalResource,
+                    value: statusProvider.currentStatus.mentalEnergy,
+                  ),
+                  _buildStatusTableRow(
+                    resource: capitalResource,
+                    value: statusProvider.currentStatus.capital,
+                  ),
+                ],
+              ),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.add_circle_outline, size: 32, color: Colors.blue),
+            icon: const Icon(Icons.add_circle_outline, size: 32, color: Colors.black),
             onPressed: onAddPressed,
           ),
         ],
