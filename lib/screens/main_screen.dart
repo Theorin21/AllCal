@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:allcal/models/daily_data.dart';
 import 'package:allcal/providers/data_provider.dart';
 import 'package:allcal/providers/ui_provider.dart';
@@ -67,11 +68,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final deadlines = allDayData.where((d) => d.type == ItemType.deadline).toList();
     final tasks = allDayData.where((d) => d.type == ItemType.task).toList();
 
-    // 화면 전체 높이의 약 45%를 캘린더 높이로 설정 (기존 400과 비슷하게)
-    final calendarHeight = screenSize.height * 0.35; 
-    // 화면 전체 높이의 약 10%를 하단 바 높이로 설정 (기존 80과 비슷하게)
-    final bottomBarHeight = screenSize.height * 0.1;
-
     // 2. 생성된 리스트에 대해 sort 함수를 호출합니다.
     tasks.sort((a, b) {
       final priorityA = categoryProvider.categories.indexWhere((c) => c.id == a.categoryId);
@@ -88,58 +84,108 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       appBar: const MainAppBar(),
       drawer: const SettingsDrawer(),
       body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+
+        // =============================================
+        // ✨ 1. LayoutBuilder를 body 전체를 감싸도록 이동 ✨
+        // =============================================
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // constraints.maxHeight는 이제 AppBar와 SafeArea를 제외한 실제 사용 가능 높이
+            final availableHeight = constraints.maxHeight;
+
+            final calendarHeight = availableHeight * 0.45;
+            final bottomBarHeight = availableHeight * 0.1;
+            
+            // '일정/할일' 창이 차지하는 실제 높이
+            final listAreaHeight = availableHeight - calendarHeight - bottomBarHeight;
+
+            // =============================================
+            // ✨ 2. 정확한 maxHeight 계산 ✨
+            // =============================================
+            const minHeight = 20.0;
+            const singleItemHeight = 54.0;
+            // 규칙 1: 아래 목록이 가려지지 않도록 하는 최대 높이
+            final spaceBasedMaxHeight = (listAreaHeight - singleItemHeight);
+
+            // 규칙 2: 콘텐츠 높이에 맞춘 최대 높이
+            // (드래그 바 높이 + 모든 기한 아이템의 높이 합)
+            final contentBasedMaxHeight = minHeight + 4 + (deadlines.length * singleItemHeight);
+
+            // =============================================
+            // ✨ 2. 두 값 중 더 작은 값을 최종 maxHeight로 선택 ✨
+            // =============================================
+            final maxHeight = min(spaceBasedMaxHeight, contentBasedMaxHeight).clamp(minHeight, listAreaHeight);
+            
+            final initialHeight = (minHeight + singleItemHeight + 4).clamp(minHeight, maxHeight);
+
+            final List<double> snapPoints = [];
+            // 0단계: 드래그 바만 보이는 높이
+            snapPoints.add(minHeight);
+            // 1, 2, 3...개 아이템이 보이는 높이를 순서대로 추가
+            for (int i = 1; i <= deadlines.length; i++) {
+              final snapHeight = minHeight + 4 + (i * singleItemHeight);
+              if (snapHeight <= maxHeight) {
+                snapPoints.add(snapHeight);
+              } else {
+                // 최대 높이를 초과하면 더 이상 추가하지 않음
+                break;
+              }
+            }
+
+            // 최초 높이를 안전하게 설정
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (deadlines.isNotEmpty) {
+                context.read<UiProvider>().initializeDeadlinePanelHeight(initialHeight);
+              }
+            });        
+
+            return Stack(
               children: [
-                SizedBox(
-                  height: calendarHeight,
-                  child: CustomMonthlyCalendar(),
-                ),
-                const Divider(height: 1, color: Colors.black12),
-                Expanded(
-                  // [수정] 1층: 기본 좌우 분할 목록
-                  child: Row(
-                    children: [
-                      // 이제 그냥 DailyListView를 호출하기만 하면 됩니다.
-                      Expanded(child: DailyListView(items: schedules)),
-                      const VerticalDivider(width: 1, color: Colors.black12),
-                      Expanded(
-                        // '할일' DragTarget은 기존과 동일 (단순 타입 변경)
-                        child: DragTarget<DailyData>(
-                          builder: (context, candidateData, rejectedData) {
-                            bool isTarget = candidateData.isNotEmpty && candidateData.first?.type == ItemType.schedule;
-                            return Container(
-                              color: isTarget ? Colors.green.withOpacity(0.1) : Colors.transparent,
-                              child: DailyListView(items: tasks),
-                            );
-                          },
-                          onWillAccept: (data) => data?.type == ItemType.schedule,
-                          onAccept: (data) {
-                            context.read<DataProvider>().changeItemType(data.id, ItemType.task);
-                          },
-                        ),
+                Column(
+                  children: [
+                    SizedBox(
+                      height: calendarHeight,
+                      child: CustomMonthlyCalendar(),
+                    ),
+                    const Divider(height: 1, color: Colors.black12),
+                    Expanded(
+                      // [수정] 1층: 기본 좌우 분할 목록
+                      child: Row(
+                        children: [
+                          // 이제 그냥 DailyListView를 호출하기만 하면 됩니다.
+                          Expanded(child: DailyListView(items: schedules)),
+                          const VerticalDivider(width: 1, color: Colors.black12),
+                          Expanded(
+                            // '할일' DragTarget은 기존과 동일 (단순 타입 변경)
+                            child: DragTarget<DailyData>(
+                              builder: (context, candidateData, rejectedData) {
+                                bool isTarget = candidateData.isNotEmpty && candidateData.first?.type == ItemType.schedule;
+                                return Container(
+                                  color: isTarget ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                                  child: DailyListView(items: tasks),
+                                );
+                              },
+                              onWillAccept: (data) => data?.type == ItemType.schedule,
+                              onAccept: (data) {
+                                context.read<DataProvider>().changeItemType(data.id, ItemType.task);
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: bottomBarHeight),
+                  ],
                 ),
-                SizedBox(height: bottomBarHeight),
-              ],
-            ),
 
-            // [수정] 2층: 기한 패널 (조건부 표시)
-            if (deadlines.isNotEmpty)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: bottomBarHeight,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final parentHeight = screenSize.height - calendarHeight - bottomBarHeight - MediaQuery.of(context).padding.top - kToolbarHeight;
-                    final maxHeight = parentHeight;
-
+                // [수정] 2층: 기한 패널 (조건부 표시)
+                if (deadlines.isNotEmpty)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: bottomBarHeight,
                     // [수정] 이전의 Container와 BoxDecoration을 사용하는 코드로 복구합니다.
-                    return Container(
+                    child: Container(
                       height: uiProvider.deadlinePanelHeight,
                       decoration: BoxDecoration(
                         color: Colors.white, // 배경색
@@ -168,7 +214,21 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                             DraggableDivider(
                               onDrag: (details) {
                                 final newHeight = uiProvider.deadlinePanelHeight - details.delta.dy;
-                                uiProvider.setDeadlinePanelHeight(newHeight, maxHeight);
+                                // =============================================
+                                // ✨ 3. 계산된 최소/최대 높이를 사용하여 업데이트 ✨
+                                // =============================================
+                                uiProvider.setDeadlinePanelHeight(newHeight, minHeight, maxHeight);
+                              },
+                              onDragEnd: () {
+                                final currentHeight = uiProvider.deadlinePanelHeight;
+                                
+                                // 현재 높이에서 가장 가까운 자석 지점을 찾음
+                                final closestSnapPoint = snapPoints.reduce(
+                                  (a, b) => (a - currentHeight).abs() < (b - currentHeight).abs() ? a : b
+                                );
+                                
+                                // 가장 가까운 지점으로 높이를 최종 설정
+                                uiProvider.setDeadlinePanelHeight(closestSnapPoint, minHeight, maxHeight);
                               },
                             ),
                             Expanded(
@@ -177,29 +237,29 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                           ],
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
+
+                // 3층: 상태 바 (항상 표시)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  // BottomStatusBar에도 동일한 높이 값을 적용해 일관성 유지
+                  child: SizedBox(
+                    height: bottomBarHeight,
+                    child: BottomStatusBar(onAddPressed: _toggleFab)
+                  ),
                 ),
-              ),
 
-            // 3층: 상태 바 (항상 표시)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              // BottomStatusBar에도 동일한 높이 값을 적용해 일관성 유지
-              child: SizedBox(
-                height: bottomBarHeight,
-                child: BottomStatusBar(onAddPressed: _toggleFab)
-              ),
-            ),
-
-            ExpandingFab(
-              isOpen: _isFabOpen,
-              animationController: _fabController,
-              onToggle: _toggleFab,
-            ),
-          ],
+                ExpandingFab(
+                  isOpen: _isFabOpen,
+                  animationController: _fabController,
+                  onToggle: _toggleFab,
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

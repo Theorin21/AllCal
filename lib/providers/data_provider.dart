@@ -8,7 +8,30 @@ class DataProvider extends ChangeNotifier {
   final List<DailyData> _allData = [
     DailyData(id: '1', title: '플러터 공부', type: ItemType.schedule, categoryId: '2', startTime: DateTime.now().add(const Duration(hours: 1)), endTime: DateTime.now().add(const Duration(hours: 3)), completionState: CompletionState.completed),
     DailyData(id: '2', title: '헬스', type: ItemType.task, categoryId: '4'),
-    DailyData(id: '3', title: '프로젝트 기획서 제출', type: ItemType.deadline, categoryId: '1', endTime: DateTime.now().add(const Duration(hours: 8))),
+    DailyData(
+      id: '3', 
+      title: '프로젝트 기획서 제출', 
+      type: ItemType.deadline, 
+      categoryId: '1', 
+      startTime: DateTime.now(), // startTime은 현재 시간 (생성 시점)
+      endTime: DateTime.now().add(const Duration(days: 1)), // endTime은 하루 뒤 (마감일)
+    ),
+    DailyData(
+      id: '5', 
+      title: '과제 1', 
+      type: ItemType.deadline, 
+      categoryId: '2', 
+      startTime: DateTime.now(), // startTime은 현재 시간 (생성 시점)
+      endTime: DateTime.now().add(const Duration(days: 2)), // endTime은 하루 뒤 (마감일)
+    ),
+    DailyData(
+      id: '6', 
+      title: '헬로우', 
+      type: ItemType.deadline, 
+      categoryId: '3', 
+      startTime: DateTime.now(), // startTime은 현재 시간 (생성 시점)
+      endTime: DateTime.now().add(const Duration(days: 3)), // endTime은 하루 뒤 (마감일)
+    ),
     DailyData(id: '4', title: '저녁 약속', type: ItemType.schedule, categoryId: '1', startTime: DateTime.now().add(const Duration(hours: 9)), endTime: DateTime.now().add(const Duration(hours: 10))),
   ];
   

@@ -4,12 +4,21 @@ import 'package:flutter/material.dart';
 class DraggableDivider extends StatelessWidget {
   final Function(DragUpdateDetails) onDrag;
 
-  const DraggableDivider({super.key, required this.onDrag});
+  // ✨ 1. 드래그 종료 이벤트를 위한 콜백 함수 추가 ✨
+  final VoidCallback? onDragEnd;
+
+  const DraggableDivider({
+    super.key, 
+    required this.onDrag,
+    this.onDragEnd, // 생성자에 추가
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onVerticalDragUpdate: onDrag,
+      // ✨ 2. 드래그 종료를 감지하는 onVerticalDragEnd 추가 ✨
+      onVerticalDragEnd: (_) => onDragEnd?.call(),
       child: Container(
         width: double.infinity,
         height: 20, // 터치 영역 확보를 위한 높이

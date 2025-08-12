@@ -104,6 +104,8 @@ class DailyListView extends StatelessWidget {
               children: [
                 Text(
                   data.title,
+                  maxLines: 1, // 최대 두 줄로 제한
+                  overflow: TextOverflow.ellipsis, // 두 줄이 넘어가면 "..."으로 표시
                   style: TextStyle(
                     fontSize: 15,
                     decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
