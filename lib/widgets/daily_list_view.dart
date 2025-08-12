@@ -31,7 +31,7 @@ class DailyListView extends StatelessWidget {
               bool isTarget = candidateData.isNotEmpty;
               return Container(
                 height: isTarget ? 50 : 10, // 드래그 중일 때 영역을 넓혀서 드롭하기 쉽게 만듬
-                color: isTarget ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                color: isTarget ? Colors.black.withOpacity(0.1) : Colors.transparent,
               );
             },
             onWillAccept: (data) => data?.type == ItemType.task, // '할일'만 받음
@@ -86,8 +86,8 @@ class DailyListView extends StatelessWidget {
             // 동그라미는 세로 중앙에 배치
             Center(
               child: Container(
-                width: 10, height: 10,
-                margin: const EdgeInsets.only(right: 6), // 텍스트와 간격 확보
+                width: 8, height: 8,
+                margin: const EdgeInsets.only(right: 16), // 텍스트와 간격 확보
                 decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle)
               ),
             ),
@@ -102,15 +102,44 @@ class DailyListView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  data.title,
-                  maxLines: 1, // 최대 두 줄로 제한
-                  overflow: TextOverflow.ellipsis, // 두 줄이 넘어가면 "..."으로 표시
-                  style: TextStyle(
-                    fontSize: 15,
-                    decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
-                    color: isFinished ? Colors.grey : Colors.black,
-                  ),
+                Stack(
+                  children: [
+                    // 1. 크기 기준점 역할을 하는 '투명한' 텍스트
+                    // 이 텍스트는 보이지 않지만, Stack의 너비를 글자 길이에 딱 맞게 고정시킵니다.
+                    Text(
+                      data.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.transparent, // 투명색으로 설정
+                      ),
+                    ),
+
+                    // 2. 실제 눈에 보이는 텍스트
+                    Text(
+                      data.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: isFinished ? Colors.grey : Colors.black,
+                      ),
+                    ),
+
+                    // 3. 직접 그리는 취소선
+                    // isFinished일 때만 Stack의 중앙에 선을 그립니다.
+                    if (isFinished)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 9, // fontSize / 2 (세로 중앙)이 기본인데 y좌표 이걸로 조정
+                        child: Container(
+                          height: 1.0, // 선의 두께
+                          color: Colors.grey, // 선의 색상
+                        ),
+                      ),
+                  ],
                 ),
                 if (timeText.isNotEmpty)
                   Padding(
@@ -120,7 +149,6 @@ class DailyListView extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey,
-                        decoration: isFinished ? TextDecoration.lineThrough : TextDecoration.none,
                       ),
                     ),
                   ),
