@@ -27,6 +27,8 @@ dependencies:
   flutter_colorpicker: ^1.0.3 # 색상 선택(Color Picker) UI를 위한 패키지
   uuid: ^4.3.3              # 고유 ID 생성을 위한 패키지
 
+  material_symbols_icons: ^4.2858.1 # pub.dev에서 최신 버전을 확인하세요
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

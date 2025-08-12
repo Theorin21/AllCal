@@ -1,25 +1,23 @@
 // [1] 이 줄 추가
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // SystemChrome을 사용하기 위해 import
 import 'package:provider/provider.dart';
 import 'package:allcal/providers/calendar_provider.dart';
 import 'package:allcal/providers/data_provider.dart';
 import 'package:allcal/screens/main_screen.dart';
-import 'package:allcal/providers/category_provider.dart'; // [추가]
-import 'package:allcal/providers/ui_provider.dart'; // [추가]
-import 'package:allcal/providers/resource_provider.dart'; // [추가]
-import 'package:allcal/providers/status_provider.dart';   // [추가]
+import 'package:allcal/providers/category_provider.dart';
+import 'package:allcal/providers/ui_provider.dart';
+import 'package:allcal/providers/resource_provider.dart';
+import 'package:allcal/providers/status_provider.dart';
 
 // [2] async 추가
 void main() async {
-  print('[DEBUG] main 함수 시작'); // 디버그 프린트 1
   // [3] 이 줄 추가: 플러터 엔진과 위젯을 연결하는 역할
   WidgetsFlutterBinding.ensureInitialized();
-  print('[DEBUG] 위젯 바인딩 초기화 완료'); // 디버그 프린트 2
   
   // [4] 이 줄 추가: 한국어 날짜/시간 데이터를 미리 준비시킴
   await initializeDateFormatting();
-  print('[DEBUG] 날짜 포맷 초기화 완료'); // 디버그 프린트 3
 
   runApp(
     MultiProvider(
@@ -31,29 +29,16 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ResourceProvider()),
         ChangeNotifierProvider(create: (_) => StatusProvider()),
         
-        // =============================================
-        // ✨ DataProvider 생성 방식 변경 ✨
-        // =============================================
         // 생성된 CategoryProvider를 읽어서 DataProvider에 전달
         ChangeNotifierProxyProvider<CategoryProvider, DataProvider>(
-          create: (context) {
-            print('[DEBUG] DataProvider 생성 시도'); // 디버그 프린트 4
-            final dataProvider = DataProvider(context.read<CategoryProvider>());
-            print('[DEBUG] DataProvider 생성 완료'); // 디버그 프린트 5
-            return dataProvider;
-          },
-          update: (context, categoryProvider, previousDataProvider) {
-            print('[DEBUG] DataProvider 업데이트 시도');
-            final dataProvider = DataProvider(categoryProvider);
-            print('[DEBUG] DataProvider 업데이트 완료');
-            return dataProvider;
-          },
+          create: (context) => DataProvider(context.read<CategoryProvider>()),
+          update: (context, categoryProvider, previousDataProvider) =>
+              DataProvider(categoryProvider),
         ),
       ],
       child: const AllCalApp(),
     ),
   );
-  print('[DEBUG] runApp 함수 호출 완료'); // 디버그 프린트 6
 }
 
 class AllCalApp extends StatelessWidget {
@@ -64,8 +49,32 @@ class AllCalApp extends StatelessWidget {
     return MaterialApp(
       title: 'AllCal',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
+        scaffoldBackgroundColor: Colors.white,
         fontFamily: 'Pretendard',
+
+        // =============================================
+        // ✨ AppBar 테마 및 시스템 UI 색상 설정 ✨
+        // =============================================
+        appBarTheme: const AppBarTheme(
+          // 모든 AppBar의 배경색을 흰색으로 지정
+          backgroundColor: Colors.white,
+          // 모든 AppBar의 아이콘과 글자색을 검은색으로 지정
+          foregroundColor: Colors.black,
+          // 그림자 효과 제거하여 깔끔하게
+          elevation: 0,
+          
+          // AppBar가 보일 때 적용될 시스템 UI 스타일
+          systemOverlayStyle: SystemUiOverlayStyle(
+            // 안드로이드 네비게이션 바 색상 설정
+            systemNavigationBarColor: Colors.white, // 바 배경을 흰색으로
+            systemNavigationBarIconBrightness: Brightness.dark, // 바 아이콘을 어두운 색으로
+            
+            // 상단 상태 바 아이콘 색상 설정
+            statusBarIconBrightness: Brightness.dark, 
+            statusBarBrightness: Brightness.light,
+          ),
+        ),
       ),
       home: const MainScreen(),
       debugShowCheckedModeBanner: false,
