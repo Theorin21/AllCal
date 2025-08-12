@@ -315,6 +315,8 @@ class DailyListView extends StatelessWidget {
     final start = data.startTime!;
     final end = data.endTime;
     final timeFormat = DateFormat('HH:mm');
+    final dateTimeFormat = DateFormat('M/d HH:mm');
+
 
     switch (data.type) {
       case ItemType.schedule:
@@ -331,9 +333,13 @@ class DailyListView extends StatelessWidget {
         return '';
       
       case ItemType.deadline:
-        // endTime(마감 시간)이 있을 경우에만 표시
         if (end != null) {
-          return '~ ${timeFormat.format(end)}'; // start -> end
+          // 선택된 날짜와 마감 날짜가 같은지 확인
+          final isSameDay = DateUtils.isSameDay(end, selectedDay);
+          // 날짜가 같으면 시간만, 다르면 날짜와 시간을 함께 표시
+          return isSameDay
+              ? '~ ${timeFormat.format(end)}'
+              : '~ ${dateTimeFormat.format(end)}';
         }
         return ''; // 마감 시간이 없으면 아무것도 표시하지 않음
       

@@ -133,19 +133,19 @@ class _ResourceInputScreenState extends State<ResourceInputScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // 왼쪽 상단 '+' 버튼
               IconButton(
-                icon: const Icon(Icons.add_circle_outline),
+                icon: const Icon(Icons.add),
                 onPressed: _addInputRow,
               ),
-              const Text('자원 변화 입력', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('어땠나요?', style: TextStyle(fontWeight: FontWeight.bold)),
               // 오른쪽 상단 '완료(✓)' 버튼
               IconButton(
-                icon: Icon(Icons.check, color: _canSave ? Colors.blue : Colors.grey),
+                icon: Icon(Icons.check),
                 onPressed: _saveChanges,
               )
             ],
@@ -156,7 +156,7 @@ class _ResourceInputScreenState extends State<ResourceInputScreen> {
         Flexible(
           child: ListView.builder(
             shrinkWrap: true,
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(10.0),
             itemCount: _inputStates.length,
             itemBuilder: (context, index) {
               return _ResourceInputRow(
@@ -200,9 +200,10 @@ class __ResourceInputRowState extends State<_ResourceInputRow> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
       child: Row(
         children: [
+          const SizedBox(width: 4),
           // 1. 자원 선택
           GestureDetector(
             onTap: () async {
@@ -215,39 +216,48 @@ class __ResourceInputRowState extends State<_ResourceInputRow> {
               }
             },
             child: Container(
-              width: 48, height: 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Icon(selectedResource?.iconData ?? Icons.question_mark, color: selectedResource?.color),
+              width: 40, height: 40,
+              child: Icon(selectedResource?.iconData ?? Icons.question_mark, color: selectedResource?.color, size:30),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 0),
 
-          // 2. +/- 토글 버튼
-          ToggleButtons(
-            isSelected: [widget.inputState.isPositive, !widget.inputState.isPositive],
-            onPressed: (index) => setState(() => widget.inputState.isPositive = (index == 0)),
-            borderRadius: BorderRadius.circular(8),
-            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-            children: const [Icon(Icons.add), Icon(Icons.remove)],
+          // [수정] 2. +/- 토글 버튼 -> 아이콘 버튼으로 변경
+          IconButton(
+            icon: Icon(
+              widget.inputState.isPositive ? Icons.add : Icons.remove,
+              color: widget.inputState.isPositive ? Colors.blue : Colors.red,
+              size: 40, // 아이콘 크기 살짝 키움
+            ),
+            onPressed: () => setState(() => widget.inputState.isPositive = !widget.inputState.isPositive),
           ),
           const SizedBox(width: 8),
 
           // 3. 증감 값 입력
           Expanded(
-            child: TextField(
-              controller: widget.inputState.amountController,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              style: const TextStyle(fontSize: 18),
+            child: SizedBox(
+              height: 30,
+              child: TextField(
+                controller: widget.inputState.amountController,
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                // TextField가 부모(SizedBox)의 높이를 꽉 채우도록 설정
+                expands: true, 
+                maxLines: null,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  // 내부 패딩을 조절하여 텍스트가 수직 중앙에 오도록 함
+                  contentPadding: EdgeInsets.symmetric(vertical: 0),
+                ),
+                style: const TextStyle(fontSize: 16),
+              ),
             ),
           ),
+          const SizedBox(width: 8),
+
           IconButton(
-            icon: const Icon(Icons.remove_circle_outline, color: Colors.grey),
+            icon: const Icon(Icons.remove_circle, color: Colors.red, size:20),
             onPressed: widget.onDelete,
           ),
         ],

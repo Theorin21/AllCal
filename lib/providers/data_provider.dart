@@ -66,7 +66,14 @@ class DataProvider extends ChangeNotifier {
 
       // 타입이 '기한'으로 같으면, endTime 기준으로 정렬 (마감일이 빠른 순)
       if (a.type == ItemType.deadline) {
-        // endTime이 없는 경우(오류 데이터)를 대비해 맨 뒤로 보냄
+        // 1. 자원 입력 완료 여부(detailed)를 기준으로 정렬
+        final aIsDetailed = a.completionState == CompletionState.detailed;
+        final bIsDetailed = b.completionState == CompletionState.detailed;
+
+        if (aIsDetailed && !bIsDetailed) return 1;  // a만 완료했으면 a를 뒤로
+        if (!aIsDetailed && bIsDetailed) return -1; // b만 완료했으면 b를 뒤로 (a가 앞으로)
+
+        // 2. 자원 입력 상태가 같으면, 기존처럼 endTime으로 정렬
         if (a.endTime == null) return 1;
         if (b.endTime == null) return -1;
         return a.endTime!.compareTo(b.endTime!);
@@ -118,6 +125,7 @@ class DataProvider extends ChangeNotifier {
       } else if (data.completionState == CompletionState.completed) {
         data.completionState = CompletionState.notCompleted;
       }
+      _sortData(); // [수정] 이 줄을 추가하여 리스트를 재정렬합니다.
       notifyListeners();
     } catch (e) { print('Could not find data with id: $id'); }
   }
@@ -264,6 +272,7 @@ class DataProvider extends ChangeNotifier {
       final data = _allData.firstWhere((item) => item.id == id);
       data.resourceChanges = changes;
       data.completionState = CompletionState.detailed;
+      _sortData(); // [수정] 이 줄을 추가하여 리스트를 재정렬합니다.
       notifyListeners();
     } catch (e) {
       print('Could not find data with id: $id');

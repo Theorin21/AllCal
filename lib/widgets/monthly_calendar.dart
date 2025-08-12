@@ -139,7 +139,7 @@ class CustomMonthlyCalendar extends StatelessWidget {
             ),
             // --- 2. 날짜를 그리는 부분 ---
             SizedBox(
-              height: 36,
+              height: 30,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
