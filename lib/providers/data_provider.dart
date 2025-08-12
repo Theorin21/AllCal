@@ -8,7 +8,7 @@ class DataProvider extends ChangeNotifier {
   final List<DailyData> _allData = [
     DailyData(id: '1', title: '플러터 공부', type: ItemType.schedule, categoryId: '2', startTime: DateTime.now().add(const Duration(hours: 1)), endTime: DateTime.now().add(const Duration(hours: 3)), completionState: CompletionState.completed),
     DailyData(id: '2', title: '헬스', type: ItemType.task, categoryId: '4'),
-    DailyData(id: '3', title: '프로젝트 기획서 제출', type: ItemType.deadline, categoryId: '1', startTime: DateTime.now().add(const Duration(hours: 8))),
+    DailyData(id: '3', title: '프로젝트 기획서 제출', type: ItemType.deadline, categoryId: '1', endTime: DateTime.now().add(const Duration(hours: 8))),
     DailyData(id: '4', title: '저녁 약속', type: ItemType.schedule, categoryId: '1', startTime: DateTime.now().add(const Duration(hours: 9)), endTime: DateTime.now().add(const Duration(hours: 10))),
   ];
   
@@ -39,6 +39,14 @@ class DataProvider extends ChangeNotifier {
         if (a.startTime == null) return 1;
         if (b.startTime == null) return -1;
         return a.startTime!.compareTo(b.startTime!);
+      }
+
+      // 타입이 '기한'으로 같으면, endTime 기준으로 정렬 (마감일이 빠른 순)
+      if (a.type == ItemType.deadline) {
+        // endTime이 없는 경우(오류 데이터)를 대비해 맨 뒤로 보냄
+        if (a.endTime == null) return 1;
+        if (b.endTime == null) return -1;
+        return a.endTime!.compareTo(b.endTime!);
       }
       
       // 3. 타입이 '할일'으로 같으면, 카테고리 우선순위로 정렬

@@ -33,11 +33,20 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
     _currentItemType = widget.itemType; // [추가] 상태 변수 초기화
 
     final categoryProvider = context.read<CategoryProvider>();
+    final isCreating = widget.data == null;
 
     _titleController = TextEditingController(text: widget.data?.title ?? '');
     _memoController = TextEditingController(text: widget.data?.memo ?? '');
-    _startDate = widget.data?.startTime ?? DateTime.now();
-    _endDate = widget.data?.endTime ?? _startDate.add(const Duration(hours: 1));
+
+    if (isCreating && _currentItemType == ItemType.deadline) {
+      // 만들기 모드 + 기한 타입일 때
+      _startDate = DateTime.now(); // startTime은 현재 시간으로 고정
+      _endDate = DateTime.now().add(const Duration(days: 1)); // endTime(마감일)은 기본값으로 내일
+    } else {
+      // 그 외 모든 경우 (수정 모드, 다른 타입)는 기존 로직 유지
+      _startDate = widget.data?.startTime ?? DateTime.now();
+      _endDate = widget.data?.endTime ?? _startDate.add(const Duration(hours: 1));
+    }
 
     if (widget.data != null) {
       try {
@@ -71,24 +80,44 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
     }
     
     final dataProvider = context.read<DataProvider>();
+    final isCreating = widget.data == null;
+
+    DateTime? finalStartTime;
+    DateTime? finalEndTime;
+
+    if (_currentItemType == ItemType.deadline) {
+      if (isCreating) {
+        // 만들기 모드: startTime은 생성 시점, endTime은 사용자가 설정한 마감일
+        finalStartTime = _startDate;
+        finalEndTime = _endDate;
+      } else {
+        // 수정 모드: startTime(최초 생성 시점)은 절대 바꾸지 않음. endTime만 수정.
+        finalStartTime = widget.data!.startTime;
+        finalEndTime = _endDate;
+      }
+    } else {
+      // 다른 타입들은 기존 로직 유지
+      finalStartTime = _startDate;
+      finalEndTime = (_currentItemType == ItemType.schedule) ? _endDate : null;
+    }
+
     final newItem = DailyData(
-      id: widget.data?.id ?? const Uuid().v4(), // [핵심] 수정 모드일 경우 기존 id를 그대로 사용
-      type: _currentItemType, // [수정]
+      id: widget.data?.id ?? const Uuid().v4(),
+      type: _currentItemType,
       title: _titleController.text,
       categoryId: _selectedCategory!.id,
-      isAllDay: widget.data?.isAllDay ?? false, // isAllDay는 수정 화면에서 바꿀 수 없음 (임시)
-      startTime: _startDate,
-      endTime: (widget.itemType == ItemType.schedule || widget.itemType == ItemType.deadline) ? _endDate : null,
-      memo: (widget.itemType == ItemType.task) ? _memoController.text : null,
-      completionState: widget.data?.completionState ?? CompletionState.notCompleted, // 기존 상태 유지
-      resourceChanges: widget.data?.resourceChanges ?? [], // 기존 자원 기록 유지
+      isAllDay: widget.data?.isAllDay ?? false,
+      startTime: finalStartTime,
+      endTime: finalEndTime,
+      memo: (_currentItemType == ItemType.task) ? _memoController.text : null,
+      completionState: widget.data?.completionState ?? CompletionState.notCompleted,
+      resourceChanges: widget.data?.resourceChanges ?? [],
     );
     
-    // [수정] '수정 모드'인지 '만들기 모드'인지 확인하여 다른 함수를 호출합니다.
-    if (widget.data != null) { // data가 있으면 수정 모드
-      dataProvider.updateData(newItem);
-    } else { // data가 없으면 만들기 모드
+    if (isCreating) {
       dataProvider.addData(newItem);
+    } else {
+      dataProvider.updateData(newItem);
     }
     
     Navigator.of(context).pop();
@@ -256,11 +285,14 @@ class _ItemEditScreenState extends State<ItemEditScreen> {
   }
 
   Widget _buildDeadlineFields() {
+    // =============================================
+    // ✨ 2. '기한' UI가 endTime을 수정하도록 변경 ✨
+    // =============================================
     return _DateTimePickerRow(
       label: '기한',
-      date: _startDate, // 기한은 startTime에 저장
+      date: _endDate, // _startDate -> _endDate
       mode: CupertinoDatePickerMode.dateAndTime,
-      onChanged: (newDate) => setState(() => _startDate = newDate),
+      onChanged: (newDate) => setState(() => _endDate = newDate), // _startDate -> _endDate
     );
   }
 

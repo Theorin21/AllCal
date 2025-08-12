@@ -329,7 +329,11 @@ class DailyListView extends StatelessWidget {
         return '';
       
       case ItemType.deadline:
-        return '~ ${timeFormat.format(start)}';
+        // endTime(마감 시간)이 있을 경우에만 표시
+        if (end != null) {
+          return '~ ${timeFormat.format(end)}'; // start -> end
+        }
+        return ''; // 마감 시간이 없으면 아무것도 표시하지 않음
       
       case ItemType.task:
         return '';

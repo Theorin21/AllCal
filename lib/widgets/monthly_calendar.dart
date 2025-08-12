@@ -10,7 +10,6 @@ class CustomMonthlyCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     final calendarProvider = context.watch<CalendarProvider>();
     final focusedDate = calendarProvider.focusedDay;
-    final selectedDate = calendarProvider.selectedDay;
 
     final firstDayOfMonth = DateTime(focusedDate.year, focusedDate.month, 1);
     final lastDayOfMonth = DateTime(focusedDate.year, focusedDate.month + 1, 0);
@@ -35,35 +34,21 @@ class CustomMonthlyCalendar extends StatelessWidget {
           context.read<CalendarProvider>().goToNextMonth();
         }
       },
-      // [수정] 명확한 레이아웃 구조로 변경
       child: Column(
         children: [
-          // 1. 요일 위젯 (고정 높이)
           _buildDaysOfWeek(),
-          
-          // 2. 남은 모든 공간을 차지하는 주(Week)들의 컨테이너
           Expanded(
             child: Column(
-              // 주(week)들이 남은 공간을 균등하게 나눠 가짐
               children: weeks.map((week) {
+                // =============================================
+                // ✨ 1. 각 주(week)를 Row로 변경 ✨
+                // =============================================
                 return Expanded(
-                  child: Container(
-                    // [디버깅용] 각 주(week)의 영역을 확인하기 위한 임시 색상
-                    // color: Colors.amber.withOpacity(0.2), 
-                    // 각 주(week)는 다시 'W곡선'과 '날짜' 영역으로 나뉨
-                    child: Column(
-                      children: [
-                        // 2-1. W곡선이 들어갈 빈 공간 (남는 공간을 모두 차지)
-                        Expanded(
-                          child: Container(
-                            // [디버깅용] W곡선 영역 확인을 위한 임시 색상
-                            // color: Colors.green.withOpacity(0.2),
-                          ),
-                        ),
-                        // 2-2. 날짜가 들어갈 공간 (고정 높이)
-                        _buildDateRow(context, week, selectedDate, focusedDate.month, focusedDate.year),
-                      ],
-                    ),
+                  child: Row(
+                    children: week.map((date) {
+                      // 각 날짜에 대해 _buildDayCell을 호출하여 세로 칸을 만듬
+                      return _buildDayCell(context, date);
+                    }).toList(),
                   ),
                 );
               }).toList(),
@@ -78,62 +63,90 @@ class CustomMonthlyCalendar extends StatelessWidget {
 
   Widget _buildDaysOfWeek() {
     final weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+      // 상하 여백만 유지하고, 좌우 여백은 제거하여 날짜와 완벽하게 정렬
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        // mainAxisAlignment는 더 이상 필요 없으므로 제거
         children: weekdays.map((day) {
-          Color dayColor = Colors.grey.shade600;
+          Color dayColor = Colors.black;
           if (day == '토') dayColor = Colors.blue;
           if (day == '일') dayColor = Colors.red;
-          return Text(day, style: TextStyle(fontWeight: FontWeight.bold, color: dayColor));
+          
+          // =============================================
+          // ✨ 1. 각 요일을 Expanded 위젯으로 감싸기 ✨
+          // =============================================
+          return Expanded(
+            // =============================================
+            // ✨ 2. Center 위젯으로 감싸서 중앙 정렬 ✨
+            // =============================================
+            child: Center(
+              child: Text(
+                day,
+                style: TextStyle(fontWeight: FontWeight.bold, color: dayColor)
+              ),
+            ),
+          );
         }).toList(),
       ),
     );
   }
 
-  Widget _buildDateRow(BuildContext context, List<DateTime> week, DateTime selectedDate, int currentMonth, int currentYear) {
+  Widget _buildDayCell(BuildContext context, DateTime date) {
+    final calendarProvider = context.watch<CalendarProvider>();
+    final selectedDate = calendarProvider.selectedDay;
+    final focusedDate = calendarProvider.focusedDay;
     final today = DateTime.now();
-    final koreanHolidays = KoreanHolidays(year: currentYear);
+    final koreanHolidays = KoreanHolidays(year: focusedDate.year);
 
-    return Container(
-      // [디버깅용] 날짜 영역 확인을 위한 임시 색상
-      // color: Colors.pink.withOpacity(0.2),
-      height: 36, // 날짜 영역의 높이를 고정
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(7, (index) {
-          final date = week[index];
-          final isSelected = DateUtils.isSameDay(date, selectedDate);
-          final isToday = DateUtils.isSameDay(date, today);
-          final isCurrentMonth = date.month == currentMonth;
-          final isHoliday = koreanHolidays.isHoliday(date);
+    final isSelected = DateUtils.isSameDay(date, selectedDate);
+    final isToday = DateUtils.isSameDay(date, today);
+    final isCurrentMonth = date.month == focusedDate.month;
+    final isHoliday = koreanHolidays.isHoliday(date);
 
-          Color textColor;
-          if (!isCurrentMonth) {
-            textColor = Colors.grey.withOpacity(0.5);
-          } else if (isSelected) {
-            textColor = Colors.white;
-          } else if (isHoliday || date.weekday == DateTime.sunday) {
-            textColor = Colors.red;
-          } else if (date.weekday == DateTime.saturday) {
-            textColor = Colors.blue;
-          } else {
-            textColor = Colors.black;
-          }
+    Color textColor;
+    if (!isCurrentMonth) {
+      // 이번 달이 아닌 경우 -> 요일별 색 + 0.5 투명도
+      if (isHoliday || date.weekday == DateTime.sunday) {
+        textColor = Colors.red.withValues(alpha: 0.5); // 빨간색 + 반투명
+      } else if (date.weekday == DateTime.saturday) {
+        textColor = Colors.blue.withValues(alpha: 0.5); // 파란색 + 반투명
+      } else {
+        textColor = Colors.black.withValues(alpha: 0.5); // 검정색 + 반투명
+      }
+    } else if (isSelected) {
+      textColor = Colors.white;
+    } else if (isHoliday || date.weekday == DateTime.sunday) {
+      textColor = Colors.red;
+    } else if (date.weekday == DateTime.saturday) {
+      textColor = Colors.blue;
+    } else {
+      textColor = Colors.black;
+    }
 
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                context.read<CalendarProvider>().onDaySelected(date, date);
-              },
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          context.read<CalendarProvider>().onDaySelected(date, date);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          children: [
+            // --- 1. W 곡선을 위한 빈 공간 ---
+            Expanded(
+              child: Container(color: Colors.transparent),
+            ),
+            // --- 2. 날짜를 그리는 부분 ---
+            SizedBox(
+              height: 36,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   if (isSelected)
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 25,
+                      height: 25,
                       decoration: const BoxDecoration(
                         color: Colors.black,
                         shape: BoxShape.circle,
@@ -141,32 +154,28 @@ class CustomMonthlyCalendar extends StatelessWidget {
                     ),
                   if (isToday)
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 25,
+                      height: 25,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.transparent,
                         border: Border.all(
-                          color: isSelected ? Colors.white : Colors.black, // 선택된 날 위에 오늘 테두리가 흰색으로 표시
-                          width: 1.5,
+                          color: isSelected ? Colors.white : Colors.black,
+                          width: 1,
                         ),
                       ),
                     ),
-                  Container(
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${date.day}',
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: isCurrentMonth ? FontWeight.normal : FontWeight.w300,
-                      ),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: isCurrentMonth ? FontWeight.normal : FontWeight.w300,
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        }),
+          ],
+        ),
       ),
     );
   }
