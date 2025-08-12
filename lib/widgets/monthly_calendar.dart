@@ -84,7 +84,7 @@ class CustomMonthlyCalendar extends StatelessWidget {
             child: Center(
               child: Text(
                 day,
-                style: TextStyle(fontWeight: FontWeight.bold, color: dayColor)
+                style: TextStyle(color: dayColor)
               ),
             ),
           );

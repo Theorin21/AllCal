@@ -68,7 +68,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final tasks = allDayData.where((d) => d.type == ItemType.task).toList();
 
     // 화면 전체 높이의 약 45%를 캘린더 높이로 설정 (기존 400과 비슷하게)
-    final calendarHeight = screenSize.height * 0.45; 
+    final calendarHeight = screenSize.height * 0.35; 
     // 화면 전체 높이의 약 10%를 하단 바 높이로 설정 (기존 80과 비슷하게)
     final bottomBarHeight = screenSize.height * 0.1;
 
